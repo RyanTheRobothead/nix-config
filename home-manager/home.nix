@@ -49,7 +49,6 @@
     };
   };
 
-  # Set your username
   home = {
     username = "luckierdodge";
     # homeDirectory = "/home/luckierdodge";
@@ -87,6 +86,9 @@
     mosh
     pdm
     nix-search-cli
+    cargo
+    gcc
+    nixpkgs-unstable.beads
   ];
 
   # Enable home-manager and git
@@ -115,6 +117,7 @@
     ".config/nix/nix.conf".source = ./dotfiles/nix.conf;
     ".sops.yaml".source = ./dotfiles/.sops.yaml;
     ".ssh/.keep".source = builtins.toFile "keep" "";
+    ".zsh/completions/_sk".source = ./dotfiles/completions/_sk;
   };
 
   # Starship
@@ -142,7 +145,9 @@
       save = 20000;
       size = 20000;
     };
-    initContent = (builtins.readFile ./dotfiles/.zshrc);
+    initContent = (builtins.readFile ./dotfiles/.zshrc) + ''
+      fpath+=("$HOME/.zsh/completions")
+    '';
     oh-my-zsh = {
       enable = true;
       theme = "robbyrussel";

@@ -67,7 +67,7 @@
     # openjdk17_headless
     tailscale
     zsh
-    inputs.home-manager.packages.${pkgs.system}.default
+    inputs.home-manager.packages.${pkgs.stdenv.hostPlatform.system}.default
     age
     python3
     graphviz

@@ -1,0 +1,949 @@
+#compdef sk
+
+autoload -U is-at-least
+
+_sk() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_sk_commands" \
+"*::: :->sk" \
+&& ret=0
+    case $state in
+    (sk)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+'--root=[]:ROOT:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(install)
+_arguments "${_arguments_options[@]}" : \
+'--alias=[]:ALIAS:_default' \
+'--path=[]:PATH:_default' \
+'--root=[]:ROOT:_default' \
+'--https[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':repo:_default' \
+':skill_name:_default' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'--root=[]:ROOT:_default' \
+'--json[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(where)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':installed_name:_default' \
+&& ret=0
+;;
+(cache)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_sk__cache_commands" \
+"*::: :->cache" \
+&& ret=0
+
+    case $state in
+    (cache)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-cache-command-$line[1]:"
+        case $line[1] in
+            (refresh)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_sk__cache__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-cache-help-command-$line[1]:"
+        case $line[1] in
+            (refresh)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(upgrade)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':target:_default' \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+'--force[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':installed_name:_default' \
+&& ret=0
+;;
+(sync-back)
+_arguments "${_arguments_options[@]}" : \
+'--branch=[]:BRANCH:_default' \
+'--message=[]:MESSAGE:_default' \
+'--repo=[Target repo for new skills (URL, file\://, or @owner/repo)]:REPO:_default' \
+'--skill-path=[Subdirectory inside the repo; defaults to installed name]:SKILL_PATH:_default' \
+'--https[Use HTTPS when resolving @owner/repo shorthand (default SSH)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':installed_name:_default' \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+'(--status --diff)--summary[Show the lightweight ok/modified/missing view (replacement for \`sk check\`).]' \
+'(--summary --diff)--status[Show digest + upgrade info (replacement for \`sk status\`).]' \
+'(--summary --status)--diff[Show diffs against the cached remote tip (replacement for \`sk diff\`).]' \
+'--json[Emit JSON (summary/status modes only).]' \
+'(--summary --status --diff)--apply[Apply repairs\: rebuild missing installs, drop orphan lock entries, prune unreferenced caches, normalize lockfile]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'*::names:_default' \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_sk__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-config-command-$line[1]:"
+        case $line[1] in
+            (get)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':key:_default' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':key:_default' \
+':value:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_sk__config__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-config-help-command-$line[1]:"
+        case $line[1] in
+            (get)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(template)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_sk__template_commands" \
+"*::: :->template" \
+&& ret=0
+
+    case $state in
+    (template)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-template-command-$line[1]:"
+        case $line[1] in
+            (create)
+_arguments "${_arguments_options[@]}" : \
+'--root=[]:ROOT:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+':description:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_sk__template__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-template-help-command-$line[1]:"
+        case $line[1] in
+            (create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(repo)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_sk__repo_commands" \
+"*::: :->repo" \
+&& ret=0
+
+    case $state in
+    (repo)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-repo-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+'--alias=[]:ALIAS:_default' \
+'--https[Use HTTPS when resolving @owner/repo shorthand]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':repo:_default' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'--json[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(search)
+_arguments "${_arguments_options[@]}" : \
+'--repo=[Limit search to a specific alias or repo input]:REPO:_default' \
+'--https[Use HTTPS when resolving @owner/repo shorthand]' \
+'--json[]' \
+'--all[List every skill in the targeted repo (replacement for \`sk repo catalog\`)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::query:_default' \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+'--https[Use HTTPS when resolving @owner/repo shorthand]' \
+'--json[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':target:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_sk__repo__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-repo-help-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(search)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(precommit)
+_arguments "${_arguments_options[@]}" : \
+'--allow-local[Allow local file\:// sources without failing]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(mcp-server)
+_arguments "${_arguments_options[@]}" : \
+'--root=[Override the skills root (defaults to sk config default_root)]:ROOT:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+'--shell=[The shell to generate completions for]:SHELL:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_sk__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-help-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(install)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(where)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(cache)
+_arguments "${_arguments_options[@]}" : \
+":: :_sk__help__cache_commands" \
+"*::: :->cache" \
+&& ret=0
+
+    case $state in
+    (cache)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-help-cache-command-$line[1]:"
+        case $line[1] in
+            (refresh)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(upgrade)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(sync-back)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+":: :_sk__help__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-help-config-command-$line[1]:"
+        case $line[1] in
+            (get)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(template)
+_arguments "${_arguments_options[@]}" : \
+":: :_sk__help__template_commands" \
+"*::: :->template" \
+&& ret=0
+
+    case $state in
+    (template)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-help-template-command-$line[1]:"
+        case $line[1] in
+            (create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(repo)
+_arguments "${_arguments_options[@]}" : \
+":: :_sk__help__repo_commands" \
+"*::: :->repo" \
+&& ret=0
+
+    case $state in
+    (repo)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sk-help-repo-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(search)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(precommit)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(mcp-server)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_sk_commands] )) ||
+_sk_commands() {
+    local commands; commands=(
+'init:' \
+'install:' \
+'list:' \
+'where:' \
+'cache:Cache operations' \
+'upgrade:' \
+'remove:' \
+'sync-back:' \
+'doctor:Analyze and repair cache and lockfile' \
+'config:' \
+'template:' \
+'repo:' \
+'precommit:Pre-commit checks (warn on local sources)' \
+'mcp-server:Run the repo-scoped MCP skills server over stdio' \
+'completions:Generate shell completions' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'sk commands' commands "$@"
+}
+(( $+functions[_sk__cache_commands] )) ||
+_sk__cache_commands() {
+    local commands; commands=(
+'refresh:Refresh cached repos referenced by the lockfile (cache-only)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'sk cache commands' commands "$@"
+}
+(( $+functions[_sk__cache__help_commands] )) ||
+_sk__cache__help_commands() {
+    local commands; commands=(
+'refresh:Refresh cached repos referenced by the lockfile (cache-only)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'sk cache help commands' commands "$@"
+}
+(( $+functions[_sk__cache__help__help_commands] )) ||
+_sk__cache__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk cache help help commands' commands "$@"
+}
+(( $+functions[_sk__cache__help__refresh_commands] )) ||
+_sk__cache__help__refresh_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk cache help refresh commands' commands "$@"
+}
+(( $+functions[_sk__cache__refresh_commands] )) ||
+_sk__cache__refresh_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk cache refresh commands' commands "$@"
+}
+(( $+functions[_sk__completions_commands] )) ||
+_sk__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk completions commands' commands "$@"
+}
+(( $+functions[_sk__config_commands] )) ||
+_sk__config_commands() {
+    local commands; commands=(
+'get:' \
+'set:' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'sk config commands' commands "$@"
+}
+(( $+functions[_sk__config__get_commands] )) ||
+_sk__config__get_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk config get commands' commands "$@"
+}
+(( $+functions[_sk__config__help_commands] )) ||
+_sk__config__help_commands() {
+    local commands; commands=(
+'get:' \
+'set:' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'sk config help commands' commands "$@"
+}
+(( $+functions[_sk__config__help__get_commands] )) ||
+_sk__config__help__get_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk config help get commands' commands "$@"
+}
+(( $+functions[_sk__config__help__help_commands] )) ||
+_sk__config__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk config help help commands' commands "$@"
+}
+(( $+functions[_sk__config__help__set_commands] )) ||
+_sk__config__help__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk config help set commands' commands "$@"
+}
+(( $+functions[_sk__config__set_commands] )) ||
+_sk__config__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk config set commands' commands "$@"
+}
+(( $+functions[_sk__doctor_commands] )) ||
+_sk__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk doctor commands' commands "$@"
+}
+(( $+functions[_sk__help_commands] )) ||
+_sk__help_commands() {
+    local commands; commands=(
+'init:' \
+'install:' \
+'list:' \
+'where:' \
+'cache:Cache operations' \
+'upgrade:' \
+'remove:' \
+'sync-back:' \
+'doctor:Analyze and repair cache and lockfile' \
+'config:' \
+'template:' \
+'repo:' \
+'precommit:Pre-commit checks (warn on local sources)' \
+'mcp-server:Run the repo-scoped MCP skills server over stdio' \
+'completions:Generate shell completions' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'sk help commands' commands "$@"
+}
+(( $+functions[_sk__help__cache_commands] )) ||
+_sk__help__cache_commands() {
+    local commands; commands=(
+'refresh:Refresh cached repos referenced by the lockfile (cache-only)' \
+    )
+    _describe -t commands 'sk help cache commands' commands "$@"
+}
+(( $+functions[_sk__help__cache__refresh_commands] )) ||
+_sk__help__cache__refresh_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help cache refresh commands' commands "$@"
+}
+(( $+functions[_sk__help__completions_commands] )) ||
+_sk__help__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help completions commands' commands "$@"
+}
+(( $+functions[_sk__help__config_commands] )) ||
+_sk__help__config_commands() {
+    local commands; commands=(
+'get:' \
+'set:' \
+    )
+    _describe -t commands 'sk help config commands' commands "$@"
+}
+(( $+functions[_sk__help__config__get_commands] )) ||
+_sk__help__config__get_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help config get commands' commands "$@"
+}
+(( $+functions[_sk__help__config__set_commands] )) ||
+_sk__help__config__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help config set commands' commands "$@"
+}
+(( $+functions[_sk__help__doctor_commands] )) ||
+_sk__help__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help doctor commands' commands "$@"
+}
+(( $+functions[_sk__help__help_commands] )) ||
+_sk__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help help commands' commands "$@"
+}
+(( $+functions[_sk__help__init_commands] )) ||
+_sk__help__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help init commands' commands "$@"
+}
+(( $+functions[_sk__help__install_commands] )) ||
+_sk__help__install_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help install commands' commands "$@"
+}
+(( $+functions[_sk__help__list_commands] )) ||
+_sk__help__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help list commands' commands "$@"
+}
+(( $+functions[_sk__help__mcp-server_commands] )) ||
+_sk__help__mcp-server_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help mcp-server commands' commands "$@"
+}
+(( $+functions[_sk__help__precommit_commands] )) ||
+_sk__help__precommit_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help precommit commands' commands "$@"
+}
+(( $+functions[_sk__help__remove_commands] )) ||
+_sk__help__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help remove commands' commands "$@"
+}
+(( $+functions[_sk__help__repo_commands] )) ||
+_sk__help__repo_commands() {
+    local commands; commands=(
+'add:Cache a remote repo without installing a skill' \
+'list:List cached repos' \
+'search:Search cached repos for matching skills (omit the query or pass --all to list every skill)' \
+'remove:Remove a cached repo entry' \
+    )
+    _describe -t commands 'sk help repo commands' commands "$@"
+}
+(( $+functions[_sk__help__repo__add_commands] )) ||
+_sk__help__repo__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help repo add commands' commands "$@"
+}
+(( $+functions[_sk__help__repo__list_commands] )) ||
+_sk__help__repo__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help repo list commands' commands "$@"
+}
+(( $+functions[_sk__help__repo__remove_commands] )) ||
+_sk__help__repo__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help repo remove commands' commands "$@"
+}
+(( $+functions[_sk__help__repo__search_commands] )) ||
+_sk__help__repo__search_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help repo search commands' commands "$@"
+}
+(( $+functions[_sk__help__sync-back_commands] )) ||
+_sk__help__sync-back_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help sync-back commands' commands "$@"
+}
+(( $+functions[_sk__help__template_commands] )) ||
+_sk__help__template_commands() {
+    local commands; commands=(
+'create:' \
+    )
+    _describe -t commands 'sk help template commands' commands "$@"
+}
+(( $+functions[_sk__help__template__create_commands] )) ||
+_sk__help__template__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help template create commands' commands "$@"
+}
+(( $+functions[_sk__help__upgrade_commands] )) ||
+_sk__help__upgrade_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help upgrade commands' commands "$@"
+}
+(( $+functions[_sk__help__where_commands] )) ||
+_sk__help__where_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk help where commands' commands "$@"
+}
+(( $+functions[_sk__init_commands] )) ||
+_sk__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk init commands' commands "$@"
+}
+(( $+functions[_sk__install_commands] )) ||
+_sk__install_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk install commands' commands "$@"
+}
+(( $+functions[_sk__list_commands] )) ||
+_sk__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk list commands' commands "$@"
+}
+(( $+functions[_sk__mcp-server_commands] )) ||
+_sk__mcp-server_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk mcp-server commands' commands "$@"
+}
+(( $+functions[_sk__precommit_commands] )) ||
+_sk__precommit_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk precommit commands' commands "$@"
+}
+(( $+functions[_sk__remove_commands] )) ||
+_sk__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk remove commands' commands "$@"
+}
+(( $+functions[_sk__repo_commands] )) ||
+_sk__repo_commands() {
+    local commands; commands=(
+'add:Cache a remote repo without installing a skill' \
+'list:List cached repos' \
+'search:Search cached repos for matching skills (omit the query or pass --all to list every skill)' \
+'remove:Remove a cached repo entry' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'sk repo commands' commands "$@"
+}
+(( $+functions[_sk__repo__add_commands] )) ||
+_sk__repo__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk repo add commands' commands "$@"
+}
+(( $+functions[_sk__repo__help_commands] )) ||
+_sk__repo__help_commands() {
+    local commands; commands=(
+'add:Cache a remote repo without installing a skill' \
+'list:List cached repos' \
+'search:Search cached repos for matching skills (omit the query or pass --all to list every skill)' \
+'remove:Remove a cached repo entry' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'sk repo help commands' commands "$@"
+}
+(( $+functions[_sk__repo__help__add_commands] )) ||
+_sk__repo__help__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk repo help add commands' commands "$@"
+}
+(( $+functions[_sk__repo__help__help_commands] )) ||
+_sk__repo__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk repo help help commands' commands "$@"
+}
+(( $+functions[_sk__repo__help__list_commands] )) ||
+_sk__repo__help__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk repo help list commands' commands "$@"
+}
+(( $+functions[_sk__repo__help__remove_commands] )) ||
+_sk__repo__help__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk repo help remove commands' commands "$@"
+}
+(( $+functions[_sk__repo__help__search_commands] )) ||
+_sk__repo__help__search_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk repo help search commands' commands "$@"
+}
+(( $+functions[_sk__repo__list_commands] )) ||
+_sk__repo__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk repo list commands' commands "$@"
+}
+(( $+functions[_sk__repo__remove_commands] )) ||
+_sk__repo__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk repo remove commands' commands "$@"
+}
+(( $+functions[_sk__repo__search_commands] )) ||
+_sk__repo__search_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk repo search commands' commands "$@"
+}
+(( $+functions[_sk__sync-back_commands] )) ||
+_sk__sync-back_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk sync-back commands' commands "$@"
+}
+(( $+functions[_sk__template_commands] )) ||
+_sk__template_commands() {
+    local commands; commands=(
+'create:' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'sk template commands' commands "$@"
+}
+(( $+functions[_sk__template__create_commands] )) ||
+_sk__template__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk template create commands' commands "$@"
+}
+(( $+functions[_sk__template__help_commands] )) ||
+_sk__template__help_commands() {
+    local commands; commands=(
+'create:' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'sk template help commands' commands "$@"
+}
+(( $+functions[_sk__template__help__create_commands] )) ||
+_sk__template__help__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk template help create commands' commands "$@"
+}
+(( $+functions[_sk__template__help__help_commands] )) ||
+_sk__template__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk template help help commands' commands "$@"
+}
+(( $+functions[_sk__upgrade_commands] )) ||
+_sk__upgrade_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk upgrade commands' commands "$@"
+}
+(( $+functions[_sk__where_commands] )) ||
+_sk__where_commands() {
+    local commands; commands=()
+    _describe -t commands 'sk where commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_sk" ]; then
+    _sk "$@"
+else
+    compdef _sk sk
+fi

@@ -137,7 +137,7 @@
     git
     tailscale
     zsh
-    inputs.home-manager.packages.${pkgs.system}.default
+    inputs.home-manager.packages.${pkgs.stdenv.hostPlatform.system}.default
     firefox
     age
     vscode
