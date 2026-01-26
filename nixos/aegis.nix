@@ -91,4 +91,54 @@
     interval = "weekly";
     limit = "50M";
   };
+
+  # sops-nix secrets configuration
+  sops.age.keyFile = "/home/luckierdodge/.config/sops/age/keys.txt";
+  sops.age.generateKey = false;
+
+  sops.secrets.restic_b2_account_id = {
+    format = "yaml";
+    sopsFile = ../secrets/restic.yaml;
+  };
+  sops.secrets.restic_b2_account_key = {
+    format = "yaml";
+    sopsFile = ../secrets/restic.yaml;
+  };
+  sops.secrets.restic_password = {
+    format = "yaml";
+    sopsFile = ../secrets/restic.yaml;
+  };
+
+  # Template to combine B2 credentials into env file for restic
+  sops.templates."restic-env" = {
+    content = ''
+      B2_ACCOUNT_ID=${config.sops.placeholder.restic_b2_account_id}
+      B2_ACCOUNT_KEY=${config.sops.placeholder.restic_b2_account_key}
+    '';
+  };
+
+  # Restic backup to Backblaze B2
+  services.restic.backups.backblaze = {
+    initialize = true;
+    repository = "b2:ryan-the-robothead-aegis-backup";
+    paths = [
+      "/home/luckierdodge/aegis-storage/aegis-backups"
+      "/home/luckierdodge/repos"
+    ];
+
+    passwordFile = config.sops.secrets.restic_password.path;
+    environmentFile = config.sops.templates."restic-env".path;
+
+    timerConfig = {
+      OnCalendar = "daily";
+      Persistent = true; # Run if missed while system was off
+      RandomizedDelaySec = "1h"; # Spread load
+    };
+
+    pruneOpts = [
+      "--keep-daily 7"
+      "--keep-weekly 4"
+      "--keep-monthly 6"
+    ];
+  };
 }

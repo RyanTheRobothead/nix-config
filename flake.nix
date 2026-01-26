@@ -60,13 +60,15 @@
       # pass to it, with each system as an argument
       forAllSystems = nixpkgs.lib.genAttrs systems;
       # Helper function to create nixpkgs-unstable with unfree packages allowed
-      mkUnstablePkgs = system: import nixpkgs-unstable {
-        inherit system;
-        config = {
-          allowUnfree = true;
-          allowUnfreePredicate = _: true;
+      mkUnstablePkgs =
+        system:
+        import nixpkgs-unstable {
+          inherit system;
+          config = {
+            allowUnfree = true;
+            allowUnfreePredicate = _: true;
+          };
         };
-      };
     in
     {
       # Your custom packages
