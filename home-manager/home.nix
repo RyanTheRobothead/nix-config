@@ -78,6 +78,7 @@
     # claude-code
     nixpkgs-unstable.claude-code
     nixpkgs-unstable.aider-chat
+    nixpkgs-unstable.opencode
     nodejs
     yarn
     zellij
@@ -89,11 +90,21 @@
     cargo
     gcc
     nixpkgs-unstable.beads
+    devbox
+    direnv
+    nix-direnv
   ];
 
   # Enable home-manager and git
   programs.home-manager.enable = true;
   programs.git.enable = true;
+
+  programs.direnv = {
+    enable = true;
+    enableBashIntegration = true;
+    enableZshIntegration = true;
+    nix-direnv.enable = true;
+  };
 
   # Nicely reload system units when changing configs
   #systemd.user.startServices = "sd-switch";
@@ -165,6 +176,7 @@
         "tmux"
         "starship"
         "fzf"
+        "direnv"
       ];
     };
     zplug = {
