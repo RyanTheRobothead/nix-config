@@ -27,7 +27,7 @@
     sops-nix.url = "github:Mic92/sops-nix";
 
     # darwin (for supporting Mac's ugh)
-    darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-25.05";
+    darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-25.11";
     darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
 
     # nix-flatpak
