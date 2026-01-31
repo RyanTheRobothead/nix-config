@@ -127,6 +127,7 @@
     ".config/alacritty/themes/themes/everforest_dark.toml".source = ./dotfiles/everforest_dark.toml;
     ".config/starship/starship.toml".source = ./dotfiles/starship.toml;
     ".config/nix/nix.conf".source = ./dotfiles/nix.conf;
+    ".config/opencode/opencode.json".source = ./dotfiles/opencode.json;
     ".sops.yaml".source = ./dotfiles/.sops.yaml;
     ".ssh/.keep".source = builtins.toFile "keep" "";
     ".zsh/completions/_sk".source = ./dotfiles/completions/_sk;

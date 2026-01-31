@@ -75,6 +75,15 @@
       "noatime" # Reduces unnecessary writes
     ];
   };
+  fileSystems."/mnt/aegis-backup" = {
+    device = "/dev/disk/by-label/aegis-backup";
+    fsType = "btrfs";
+    options = [
+      "compress=zstd"
+      "autodefrag"
+      "noatime"
+    ];
+  };
   fileSystems."/mnt/jaina-disk-2" = {
     device = "/dev/disk/by-label/JainaDisk2";
     fsType = "ntfs-3g";
@@ -87,7 +96,10 @@
   # Enable Btrfs scrubbing (data integrity checks)
   services.btrfs.autoScrub = {
     enable = true;
-    fileSystems = [ "/mnt/aegis-storage" ];
+    fileSystems = [
+      "/mnt/aegis-storage"
+      "/mnt/aegis-backup"
+    ];
     interval = "weekly";
     limit = "50M";
   };
@@ -122,7 +134,7 @@
     initialize = true;
     repository = "b2:ryan-the-robothead-aegis-backup";
     paths = [
-      "/home/luckierdodge/aegis-storage/aegis-backups"
+      "/home/luckierdodge/aegis-backups"
       "/home/luckierdodge/repos"
     ];
 
@@ -139,6 +151,7 @@
       "--keep-daily 7"
       "--keep-weekly 4"
       "--keep-monthly 6"
+      "--keep-yearly 2"
     ];
   };
 }
