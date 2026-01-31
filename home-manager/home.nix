@@ -93,7 +93,7 @@
     devbox
     direnv
     nix-direnv
-    outputs.packages.${pkgs.system}.argoProxy
+    outputs.packages.${pkgs.stdenv.hostPlatform.system}.argoProxy
   ];
 
   # Enable home-manager and git
