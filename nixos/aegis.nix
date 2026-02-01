@@ -134,7 +134,7 @@
     initialize = true;
     repository = "b2:ryan-the-robothead-aegis-backup";
     paths = [
-      "/home/luckierdodge/aegis-backups"
+      "/home/luckierdodge/aegis-backup"
       "/home/luckierdodge/repos"
     ];
 
