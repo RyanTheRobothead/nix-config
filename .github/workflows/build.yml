@@ -1,0 +1,85 @@
+name: Build Nix Configurations
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  nixos:
+    name: NixOS - ${{ matrix.host }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        host:
+          - aegis
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v30
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - uses: cachix/cachix-action@v15
+        with:
+          name: nix-community
+          skipPush: true
+
+      - name: Build NixOS configuration
+        run: nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel --impure --show-trace
+
+  darwin:
+    name: Darwin - ${{ matrix.host }}
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        host:
+          - primemover
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v30
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - uses: cachix/cachix-action@v15
+        with:
+          name: nix-community
+          skipPush: true
+
+      - name: Build Darwin configuration
+        run: nix build .#darwinConfigurations.${{ matrix.host }}.system --show-trace
+
+  home-manager:
+    name: Home Manager - ${{ matrix.config }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - luckierdodge@stark
+          - luckierdodge@lastprism
+          - luckierdodge@cerberus
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v30
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - uses: cachix/cachix-action@v15
+        with:
+          name: nix-community
+          skipPush: true
+
+      - name: Build Home Manager configuration
+        run: nix build ".#homeConfigurations.\"${{ matrix.config }}\".activationPackage" --show-trace
