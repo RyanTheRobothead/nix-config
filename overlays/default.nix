@@ -7,11 +7,25 @@
   # This one contains whatever you want to overlay
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
-  modifications = final: prev: {
-    # example = prev.example.overrideAttrs (oldAttrs: rec {
-    # ...
-    # });
-  };
+  modifications =
+    final: prev:
+    {
+      # example = prev.example.overrideAttrs (oldAttrs: rec {
+      # ...
+      # });
+    }
+    // (
+      if prev.stdenv.isDarwin then
+        {
+          # inetutils 2.7 has a gnulib build failure on darwin; use 2.6 from unstable
+          inetutils =
+            (import inputs.nixpkgs-unstable {
+              system = final.stdenv.hostPlatform.system;
+            }).inetutils;
+        }
+      else
+        { }
+    );
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will
   # be accessible through 'pkgs.unstable'

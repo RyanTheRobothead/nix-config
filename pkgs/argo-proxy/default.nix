@@ -6,13 +6,13 @@
 
 python3Packages.buildPythonApplication rec {
   pname = "argo-proxy";
-  version = "2.8.1";
+  version = "2.8.3";
   pyproject = true;
 
   src = fetchPypi {
     pname = "argo_proxy";
     inherit version;
-    hash = "sha256-DkRjo90kJp1VsG7XbmCV6IPAkNockyLIUuHbRG8aKig=";
+    hash = "sha256-6b3QBoDmy7YdnZs+Oq2GGJaaR2DPY72dbg2vxqjfthQ=";
   };
 
   build-system = [ python3Packages.setuptools ];

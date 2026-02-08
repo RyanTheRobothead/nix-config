@@ -34,7 +34,7 @@
     overlays = [
       # Add overlays your own flake exports (from overlays and pkgs dir):
       #outputs.overlays.additions
-      #outputs.overlays.modifications
+      outputs.overlays.modifications
       #outputs.overlays.unstable-packages
 
       # You can also add overlays exported from other flakes:
@@ -67,7 +67,7 @@
     # openjdk17_headless
     tailscale
     zsh
-    inputs.home-manager.packages.${pkgs.stdenv.hostPlatform.system}.default
+    home-manager
     age
     python3
     graphviz
