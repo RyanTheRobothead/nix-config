@@ -28,6 +28,10 @@
 
   # nix.package = pkgs.nix;
 
+  environment.variables = {
+    EDITOR = "vim";
+  };
+
   nixpkgs = {
     hostPlatform = "aarch64-darwin";
     # You can add overlays here

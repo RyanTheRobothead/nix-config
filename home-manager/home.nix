@@ -52,6 +52,9 @@
   home = {
     username = "luckierdodge";
     # homeDirectory = "/home/luckierdodge";
+    sessionVariables = {
+      EDITOR = "vim";
+    };
   };
 
   # Add stuff for your user as you see fit:
