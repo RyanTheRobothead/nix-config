@@ -19,7 +19,7 @@
     # inputs.nix-colors.homeManagerModules.default
 
     # You can also split up your configuration and import pieces of it here:
-    # ./nvim.nix
+    ./nvim.nix
   ];
 
   nixpkgs = {
@@ -53,7 +53,7 @@
     username = "luckierdodge";
     # homeDirectory = "/home/luckierdodge";
     sessionVariables = {
-      EDITOR = "vim";
+      EDITOR = "nvim";
     };
   };
 
@@ -80,7 +80,6 @@
     ghc
     # claude-code
     nixpkgs-unstable.claude-code
-    nixpkgs-unstable.aider-chat
     nixpkgs-unstable.opencode
     nodejs
     yarn
