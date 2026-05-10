@@ -34,6 +34,7 @@
     amdgpu_top
     bambu-studio
     orca-slicer
+    nanum
     google-chrome
     nixpkgs-unstable.lmstudio
     ghostty
