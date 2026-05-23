@@ -161,6 +161,7 @@
     python3Packages.ruff
     appimage-run
     usbutils
+    wl-clipboard
   ];
 
   programs.nix-ld.enable = true;

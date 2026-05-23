@@ -20,6 +20,7 @@
 
     # You can also split up your configuration and import pieces of it here:
     ./nvim.nix
+    ./scripts.nix
   ];
 
   nixpkgs = {
@@ -97,6 +98,7 @@
     direnv
     nix-direnv
     outputs.packages.${pkgs.stdenv.hostPlatform.system}.argoProxy
+    emojify
   ];
 
   # Enable home-manager and git

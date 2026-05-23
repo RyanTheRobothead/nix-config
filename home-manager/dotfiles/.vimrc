@@ -61,6 +61,7 @@ set number
 set tabstop=2
 set shiftwidth=4
 set scrolloff=10
+set expandtab
 
 "Indentation
 set autoindent
