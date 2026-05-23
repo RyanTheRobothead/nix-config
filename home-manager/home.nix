@@ -81,6 +81,7 @@
     # claude-code
     nixpkgs-unstable.claude-code
     nixpkgs-unstable.opencode
+    nixpkgs-unstable.opencode-desktop
     nodejs
     yarn
     zellij
