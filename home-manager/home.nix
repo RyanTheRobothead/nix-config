@@ -99,11 +99,13 @@
     nix-direnv
     outputs.packages.${pkgs.stdenv.hostPlatform.system}.argoProxy
     emojify
+    git-lfs
   ];
 
   # Enable home-manager and git
   programs.home-manager.enable = true;
   programs.git.enable = true;
+  programs.git.lfs.enable = true;
 
   programs.direnv = {
     enable = true;

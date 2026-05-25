@@ -162,6 +162,7 @@
     appimage-run
     usbutils
     wl-clipboard
+    openscad
   ];
 
   programs.nix-ld.enable = true;
