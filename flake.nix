@@ -32,6 +32,11 @@
 
     # nix-flatpak
     nix-flatpak.url = "github:gmodena/nix-flatpak";
+
+    # plasma-manager: declarative KDE Plasma configuration
+    plasma-manager.url = "github:nix-community/plasma-manager";
+    plasma-manager.inputs.nixpkgs.follows = "nixpkgs";
+    plasma-manager.inputs.home-manager.follows = "home-manager";
   };
 
   outputs =
@@ -44,6 +49,7 @@
       vscode-server,
       darwin,
       nix-flatpak,
+      plasma-manager,
       ...
     }@inputs:
     let
@@ -110,21 +116,17 @@
                   home-manager.useUserPackages = true;
                   home-manager.extraSpecialArgs = {
                     nixpkgs-unstable = nixpkgsUnstableWithUnfree;
+                    inherit inputs outputs;
                   };
-                  home-manager.users.luckierdodge =
-                    let
-                      lib = pkgs.lib;
-                    in
-                    import ./home-manager/home.nix {
-                      inherit
-                        config
-                        pkgs
-                        lib
-                        inputs
-                        outputs
-                        ;
-                      nixpkgs-unstable = nixpkgsUnstableWithUnfree;
-                    };
+                  home-manager.sharedModules = [
+                    plasma-manager.homeModules.plasma-manager
+                  ];
+                  home-manager.users.luckierdodge = {
+                    imports = [
+                      ./home-manager/home.nix
+                      ./home-manager/kde.nix
+                    ];
+                  };
                 }
               )
               nix-flatpak.nixosModules.nix-flatpak
