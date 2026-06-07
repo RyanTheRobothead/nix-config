@@ -134,7 +134,10 @@
       autocmd Filetype gitcommit setlocal spell textwidth=72
     '';
 
-    extraLuaConfig = ''
+    withPython3 = true;
+    withRuby = false;
+
+    initLua = ''
       -- nvim-tree setup (replacement for NERDTree)
       require("nvim-tree").setup({
         view = {

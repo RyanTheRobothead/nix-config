@@ -28,7 +28,7 @@
     overlays = [
       # Add overlays your own flake exports (from overlays and pkgs dir):
       outputs.overlays.additions
-      #outputs.overlays.modifications
+      outputs.overlays.modifications
       #outputs.overlays.unstable-packages
 
       # You can also add overlays exported from other flakes:
@@ -73,10 +73,10 @@
     pre-commit
     act
     lazydocker
-    neofetch
+    fastfetch
     just
     nixfmt-tree
-    nixfmt-rfc-style
+    nixfmt
     haskellPackages.cabal-install
     ghc
     # claude-code
@@ -89,7 +89,7 @@
     mongodb-tools
     postgresql
     mosh
-    pdm
+
     nix-search-cli
     cargo
     gcc
