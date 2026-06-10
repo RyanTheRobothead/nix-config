@@ -38,6 +38,7 @@
     google-chrome
     nixpkgs-unstable.lmstudio
     ghostty
+    godot
   ];
 
   # Disable UAS for ASMedia 2115 USB-SATA bridge to fix I/O errors
