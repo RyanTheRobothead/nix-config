@@ -96,11 +96,9 @@
   # Enable the X11 windowing system.
   services.xserver.enable = true;
 
-  # Enable the KDE Plasma Desktop Environment.
-  services.displayManager.sddm.enable = true;
-  services.displayManager.sddm.wayland.enable = true;
-  services.displayManager.sddm.settings.General.DisplayServer = "wayland";
-  services.desktopManager.plasma6.enable = true;
+  # Enable the GNOME Desktop Environment.
+  services.displayManager.gdm.enable = true;
+  services.desktopManager.gnome.enable = true;
 
   # Configure keymap in X11
   services.xserver = {
@@ -156,11 +154,14 @@
     spotify
     noisetorch
     nixpkgs-unstable.ollama
-    kdePackages.audiocd-kio
-    kdePackages.kaccounts-integration
-    kdePackages.kaccounts-providers
-    kdePackages.kdeconnect-kde
-    kdePackages.kaddressbook
+    # KDE/Plasma integration packages removed in favor of GNOME equivalents:
+    # kdePackages.audiocd-kio
+    # kdePackages.kaccounts-integration
+    # kdePackages.kaccounts-providers
+    # kdePackages.kdeconnect-kde
+    # kdePackages.kaddressbook
+    gnome-online-accounts
+    gnomeExtensions.gsconnect # GNOME equivalent of KDE Connect
     asunder
     python3Packages.pip
     python3Packages.virtualenv
@@ -301,8 +302,6 @@
     ];
     extraPortals = with pkgs; [
       xdg-desktop-portal-gtk
-      kdePackages.xdg-desktop-portal-kde
-      xdg-desktop-portal-wlr
     ];
   };
   environment.sessionVariables = {
