@@ -170,6 +170,7 @@
     usbutils
     wl-clipboard
     openscad
+    vlc
   ];
 
   programs.nix-ld.enable = true;

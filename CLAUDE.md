@@ -118,6 +118,53 @@ pre-commit run
 
 The hooks will automatically run before each commit. Use `just fmt` or `nix fmt` to manually format Nix files.
 
+## Audiobook Ripping (aegis)
+
+`ripbook` rips multi-disc audiobook CDs into a single chaptered `.m4b` placed
+directly in the Audiobookshelf library. Defined in `modules/nixos/audiobook-ripper.nix`
+(script body in `modules/nixos/ripbook.sh`), enabled only on `aegis` since it is the
+only host with an optical drive.
+
+```bash
+ripbook                      # start a book: prompts for metadata, then loops discs
+ripbook --discs 9            # skip the per-disc prompt; just feed discs in
+ripbook --list               # show books left half-ripped
+ripbook --resume <slug>      # continue after a failure or Ctrl-C
+ripbook --encode-only <slug> # re-encode already-ripped discs (e.g. at a new bitrate)
+ripbook --help
+```
+
+Flow: reads the disc TOC, computes a MusicBrainz disc ID and offers any match as a
+*suggestion*, prompts for author/title/series/year/narrator and the disc count, then
+rips each disc with `cdparanoia` and ejects. When the book's disc count is known
+(prompted, or `--discs N`) the next disc is picked up as soon as it is loaded, with no
+prompt in between; leave the count blank to be asked after each disc instead. Once every
+disc is in, it concatenates them into one AAC `.m4b` with a chapter per CD track.
+
+Because count mode has no per-disc prompt to catch it, `ripbook` compares each newly
+loaded disc against the previous one's TOC and refuses to rip the same disc twice.
+
+Output follows the Audiobookshelf directory convention:
+`<library>/<Author>/[<Series>/][Vol N - ][Year - ]<Title>[ {Narrator}]/<Title>.m4b`
+
+Intermediate WAVs and resume state live under `services.audiobookRipper.workDir`
+(~700 MB per disc); they are deleted after a successful encode unless `--keep`.
+Rips are resumable at track granularity, so a failed disc only re-reads what is missing.
+
+**Correctness guards.** The USB drive intermittently returns a corrupt table of contents
+(tracks merged, others reported zero-length) and occasionally rips past a track boundary
+while still exiting successfully. Both silently produce a book with misaligned chapters,
+so `ripbook` defends against them:
+
+- A TOC is only believed once two independent reads agree on a self-consistent table
+  (ascending, non-overlapping starts; every track a real length).
+- Every ripped track is checked byte-exact against the TOC — CD audio is exactly
+  2352 bytes per sector plus a 44-byte WAV header — and re-ripped on mismatch
+  (`--retries`, default 3). Resumed rips re-validate already-present files.
+
+Occasional `retry` lines during a rip are the drive, not a bug. Persistent failures on
+one track mean a dirty or damaged disc.
+
 ## Architecture Overview
 
 ### Flake Structure

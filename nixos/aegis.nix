@@ -25,6 +25,8 @@
     # Import your generated (nixos-generate-config) hardware configuration
     ./hardware-configuration-aegis.nix
     ./configuration.nix
+    # aegis is the only host with an optical drive
+    ../modules/nixos/audiobook-ripper.nix
     #    <sops-nix/modules/sops>
   ];
 
@@ -104,6 +106,17 @@
     ];
     interval = "weekly";
     limit = "50M";
+  };
+
+  # Rip CD audiobooks straight into the Audiobookshelf library. See `ripbook --help`.
+  services.audiobookRipper = {
+    enable = true;
+    user = "luckierdodge";
+    # Matches the MEDIA_DIR/audiobooks bind mount in dockerfiles/aegis/compose.media.yaml
+    libraryPath = "/mnt/aegis-storage/media-storage/audiobooks";
+    # Keep the multi-gigabyte intermediate WAVs off the root filesystem
+    workDir = "/mnt/aegis-storage/ripbook-work";
+    contact = "ryandlewis.rl@gmail.com";
   };
 
   # sops-nix secrets configuration
