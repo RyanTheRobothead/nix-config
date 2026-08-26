@@ -137,12 +137,14 @@ ripbook --help
 Flow: reads the disc TOC, computes a MusicBrainz disc ID and offers any match as a
 *suggestion*, prompts for author/title/series/year/narrator and the disc count, then
 rips each disc with `cdparanoia` and ejects. When the book's disc count is known
-(prompted, or `--discs N`) the next disc is picked up as soon as it is loaded, with no
-prompt in between; leave the count blank to be asked after each disc instead. Once every
-disc is in, it concatenates them into one AAC `.m4b` with a chapter per CD track.
+(prompted, or `--discs N`) the between-disc step is a bare "press Enter"; leave the count
+blank to be asked "another disc?" after each instead. Once every disc is in, it
+concatenates them into one AAC `.m4b` with a chapter per CD track.
 
-Because count mode has no per-disc prompt to catch it, `ripbook` compares each newly
-loaded disc against the previous one's TOC and refuses to rip the same disc twice.
+`eject` is advisory and this drive frequently ignores it, so `ripbook` always waits for a
+keypress before looking for the next disc rather than spinning on the one still in the
+tray. It also compares each newly loaded disc against the previous one's TOC and refuses
+to rip the same disc twice, in case the swap did not actually happen.
 
 Output follows the Audiobookshelf directory convention:
 `<library>/<Author>/[<Series>/][Vol N - ][Year - ]<Title>[ {Narrator}]/<Title>.m4b`

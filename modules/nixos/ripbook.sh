@@ -54,9 +54,9 @@ Options:
   -l, --library DIR   Audiobookshelf library root
   -w, --work DIR      Scratch space for intermediate WAVs
   -d, --device DEV    Optical drive (default: /dev/cdrom)
-  -n, --discs N       How many discs the book has. Skips the "another disc?"
-                      prompt entirely: each disc ejects and the next is picked
-                      up as soon as you load it. Omit to be asked after each.
+  -n, --discs N       How many discs the book has. Replaces the "another disc?"
+                      prompt with a bare "press Enter when the next disc is
+                      loaded". Omit to be asked after each disc instead.
   -b, --bitrate RATE  AAC bitrate for the final m4b (default: 64k)
       --stereo        Encode stereo instead of mono
       --fast          Disable cdparanoia error correction (faster, riskier)
@@ -150,6 +150,18 @@ ask() {
     [[ -n "$reply" ]] || reply="$default"
   fi
   sanitize "$reply"
+}
+
+# Wait for a keypress. Used between discs: `eject` is advisory and plenty of
+# drives quietly ignore it, so without a human in the loop we would sit there
+# re-reading the disc that is still sitting in the tray.
+pause() {
+  local prompt="$1" reply=""
+  # Stdin closed means nobody is there to press anything; carry on rather than
+  # blocking forever. wait_for_disc still refuses to re-rip the same disc.
+  if ! read -r -p "  $prompt" reply; then
+    echo
+  fi
 }
 
 confirm() {
@@ -407,8 +419,8 @@ collect_metadata() {
   YEAR="$(ask 'Publish year' '')"
   NARRATOR="$(ask 'Narrator' '')"
 
-  # Knowing the disc count up front lets the rip run unattended: eject, swap,
-  # and it picks the next disc up on its own instead of asking each time.
+  # Knowing the disc count up front turns the between-disc prompt into a bare
+  # "press Enter" instead of a question that has to be answered each time.
   local answer
   while [[ -z "$DISC_TOTAL" ]]; do
     answer="$(ask 'Number of discs (blank = ask after each)' '')"
@@ -685,6 +697,7 @@ if [[ $ENCODE_ONLY -eq 0 ]]; then
         break
       fi
       info "Ripped $DISCS_DONE of $DISC_TOTAL discs"
+      pause "Load disc $(( DISCS_DONE + 1 )) of $DISC_TOTAL, then press Enter..."
     else
       echo
       if ! confirm "Ripped $DISCS_DONE disc(s). Another disc?"; then
