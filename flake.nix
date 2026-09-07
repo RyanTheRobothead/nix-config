@@ -124,7 +124,10 @@
                   home-manager.users.luckierdodge = {
                     imports = [
                       ./home-manager/home.nix
-                      ./home-manager/kde.nix
+                      ./home-manager/gnome.nix
+                      # aegis runs GNOME as of bb200ac; re-enable this (and
+                      # drop gnome.nix) to go back to Plasma.
+                      # ./home-manager/kde.nix
                     ];
                   };
                 }

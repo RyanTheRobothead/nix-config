@@ -48,6 +48,22 @@
   # Applies to all drives in the DAS enclosure (174c:55aa)
   boot.kernelParams = [ "usb-storage.quirks=174c:55aa:u" ];
 
+  # Default the power profile to performance on every boot.
+  # power-profiles-daemon does persist its last profile in /var/lib, but this
+  # makes the default declarative and survives that state being wiped.
+  # Ordered against graphical.target rather than multi-user.target, because
+  # power-profiles-daemon is itself After=multi-user.target.
+  systemd.services.power-profile-performance = {
+    description = "Set power-profiles-daemon to the performance profile";
+    wantedBy = [ "graphical.target" ];
+    requires = [ "power-profiles-daemon.service" ];
+    after = [ "power-profiles-daemon.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.power-profiles-daemon}/bin/powerprofilesctl set performance";
+    };
+  };
+
   # Set hostname
   networking.hostName = "aegis";
   networking.firewall.enable = false;
