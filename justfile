@@ -24,7 +24,7 @@ build host="":
     sudo nixos-rebuild build --impure --flake .#{{ host }}
 
 # Switch to NixOS configuration
-switch host="":
+switch host="": kill-discord
     #!/usr/bin/env bash
     if [ -z "{{ host }}" ]; then
         echo "Available NixOS hosts: {{ nixos_hosts }}"
@@ -35,7 +35,7 @@ switch host="":
     sudo nixos-rebuild switch --impure --flake .#{{ host }}
 
 # Test NixOS configuration (switch with rollback on next boot)
-test host="":
+test host="": kill-discord
     #!/usr/bin/env bash
     if [ -z "{{ host }}" ]; then
         echo "Available NixOS hosts: {{ nixos_hosts }}"
@@ -96,7 +96,7 @@ switch-hm host="":
 # Smart Commands (Auto-detect platform)
 
 # Auto-detect current hostname and switch accordingly
-auto-switch:
+auto-switch: kill-discord
     #!/usr/bin/env bash
     hostname=$(hostname)
     echo "Detected hostname: $hostname"
@@ -162,6 +162,19 @@ auto-build:
     esac
 
 # Flake Management
+
+# Kill Discord, which ends up in a broken state if left running across a system switch
+kill-discord:
+    #!/usr/bin/env bash
+    # Match on process name (not -f), so this doesn't match the recipe's own shell
+    if pkill -i discord; then
+        echo "Stopping Discord..."
+        for _ in $(seq 20); do
+            pgrep -i discord >/dev/null || exit 0
+            sleep 0.5
+        done
+        pkill -9 -i discord || true
+    fi
 
 # Update all flake inputs
 update:
