@@ -30,7 +30,7 @@ jobs:
           skipPush: true
 
       - name: Build NixOS configuration
-        run: nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel --impure --show-trace
+        run: nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel --show-trace
 
   darwin:
     name: Darwin - ${{ matrix.host }}

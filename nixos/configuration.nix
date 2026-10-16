@@ -194,15 +194,28 @@
 
   # Docker
   virtualisation.docker.enable = true;
-  virtualisation.docker.autoPrune.enable = true;
-  virtualisation.docker.autoPrune.dates = "weekly";
-  virtualisation.docker.autoPrune.flags = [ "--all" ];
   virtualisation.docker.daemon.settings = {
     experimental = true;
     ipv6 = true;
     ip6tables = true;
     default-network-opts.bridge."com.docker.network.enable_ipv6" = "true";
     fixed-cidr-v6 = "fd00::/80";
+  };
+  # Prune images unused for a week. Unlike autoPrune (docker system prune),
+  # this leaves stopped containers alone.
+  systemd.services.docker-image-prune = {
+    description = "Prune unused Docker images";
+    after = [ "docker.service" ];
+    requires = [ "docker.service" ];
+    serviceConfig.Type = "oneshot";
+    script = "${config.virtualisation.docker.package}/bin/docker image prune --all --force --filter until=168h";
+  };
+  systemd.timers.docker-image-prune = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "weekly";
+      Persistent = true;
+    };
   };
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -228,9 +241,11 @@
     options = "--delete-older-than 7d";
   };
 
-  # Automatic Updates
+  # Automatic Updates: nightly switch to whatever is on GitHub's main.
+  # A bridge until comin takes over; flake inputs only move when flake.lock is pushed.
   system.autoUpgrade.enable = true;
-  system.autoUpgrade.allowReboot = true;
+  system.autoUpgrade.flake = "github:RyanTheRobothead/nix-config";
+  system.autoUpgrade.allowReboot = false;
 
   # Tailscale
   services.tailscale.enable = true;

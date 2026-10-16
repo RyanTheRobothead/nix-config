@@ -21,7 +21,7 @@ build host="":
         exit 1
     fi
     echo "Building NixOS configuration for {{ host }}..."
-    sudo nixos-rebuild build --impure --flake .#{{ host }}
+    sudo nixos-rebuild build --flake .#{{ host }}
 
 # Switch to NixOS configuration
 switch host="": kill-discord
@@ -32,7 +32,7 @@ switch host="": kill-discord
         exit 1
     fi
     echo "Switching to NixOS configuration for {{ host }}..."
-    sudo nixos-rebuild switch --impure --flake .#{{ host }}
+    sudo nixos-rebuild switch --flake .#{{ host }}
 
 # Test NixOS configuration (switch with rollback on next boot)
 test host="": kill-discord
@@ -43,7 +43,7 @@ test host="": kill-discord
         exit 1
     fi
     echo "Testing NixOS configuration for {{ host }}..."
-    sudo nixos-rebuild test --impure --flake .#{{ host }}
+    sudo nixos-rebuild test --flake .#{{ host }}
 
 # Darwin Commands
 
@@ -104,7 +104,7 @@ auto-switch: kill-discord
     case $hostname in
         aegis|killingtime|bigbox)
             echo "Switching NixOS configuration for $hostname..."
-            sudo nixos-rebuild switch --impure --flake .#$hostname
+            sudo nixos-rebuild switch --flake .#$hostname
             ;;
         primemover)
             echo "Switching Darwin configuration for $hostname..."
@@ -141,7 +141,7 @@ auto-build:
     case $hostname in
         aegis|killingtime|bigbox)
             echo "Building NixOS configuration for $hostname..."
-            sudo nixos-rebuild build --impure --flake .#$hostname
+            sudo nixos-rebuild build --flake .#$hostname
             ;;
         primemover)
             echo "Building Darwin configuration for $hostname..."

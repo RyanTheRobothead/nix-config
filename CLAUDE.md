@@ -52,12 +52,12 @@ just hosts                  # Show all available hosts
 #### NixOS Systems
 ```bash
 # Apply system configuration for specific hosts
-sudo nixos-rebuild switch --impure --flake .#aegis
-sudo nixos-rebuild switch --impure --flake .#killingtime
-sudo nixos-rebuild switch --impure --flake .#bigbox
+sudo nixos-rebuild switch --flake .#aegis
+sudo nixos-rebuild switch --flake .#killingtime
+sudo nixos-rebuild switch --flake .#bigbox
 
 # Build without switching (test configuration)
-sudo nixos-rebuild build --impure --flake .#hostname
+sudo nixos-rebuild build --flake .#hostname
 ```
 
 #### macOS Systems (nix-darwin)
