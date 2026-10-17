@@ -184,5 +184,34 @@
       "--keep-monthly 6"
       "--keep-yearly 2"
     ];
+
+    # Structural check after every backup; uses the local cache, so it's cheap
+    checkOpts = [ "--with-cache" ];
+  };
+
+  # Weekly check that downloads and verifies a random 5% of pack data, so
+  # the whole repository gets read over time. Reuses the backup unit's
+  # environment and credentials; --retry-lock waits out a running backup.
+  systemd.services.restic-check-backblaze = {
+    description = "Verify a sample of restic backup data on Backblaze B2";
+    environment = removeAttrs config.systemd.services.restic-backups-backblaze.environment [ "PATH" ];
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${lib.getExe config.services.restic.backups.backblaze.package} check --read-data-subset=5% --retry-lock 2h";
+      EnvironmentFile = config.sops.templates."restic-env".path;
+      CacheDirectory = "restic-backups-backblaze";
+      CacheDirectoryMode = "0700";
+      PrivateTmp = true;
+    };
+  };
+  systemd.timers.restic-check-backblaze = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "Sun 04:00";
+      Persistent = true;
+      RandomizedDelaySec = "1h";
+    };
   };
 }

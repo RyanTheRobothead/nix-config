@@ -267,6 +267,10 @@
       openssh.authorizedKeys.keys = [
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDR+XhJiwioD5yOIROSXzPnXdq+H/gdugsEvCfGqi99p ryand@lastprism"
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILIOe47H0qOPG5GHRg0PjHJCFA2BxQhzHx18Ch9iGj0A luckierdodge@lastprism"
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFA2LMlWKHE6wMXqoWENyBdtnIwPx5krhMsbDq8CX+CA cargocult (Termius)"
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIv9qQs3Xrlxg3UnN8mflkM8m2z+B4dnR7ys0843aJlO pixel-10-pro-fold"
+        # Emergency access; private key is stored in Vaultwarden
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN/A3L/EO1VBlLCnnO00tY42jviieS0lDN2DlpmOEBES emergency@ryandlewis.dev"
       ];
     };
   };
@@ -287,7 +291,8 @@
       # Forbid root login through SSH.
       PermitRootLogin = "no";
       # Use keys only. Remove if you want to SSH using password (not recommended)
-      # PasswordAuthentication = false;
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
     };
   };
 
