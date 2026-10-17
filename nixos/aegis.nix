@@ -41,7 +41,14 @@
     nixpkgs-unstable.lmstudio
     ghostty
     godot
+    # Secrets admin: edit sops files, decrypting with the YubiKeys
+    sops
+    age-plugin-yubikey
+    yubikey-manager
   ];
+
+  # age-plugin-yubikey reaches the YubiKeys through pcscd
+  services.pcscd.enable = true;
 
   # Disable UAS for ASMedia 2115 USB-SATA bridge to fix I/O errors
   # Forces the device to use standard USB Mass Storage instead
@@ -136,7 +143,8 @@
   };
 
   # sops-nix secrets configuration
-  sops.age.keyFile = "/home/luckierdodge/.config/sops/age/keys.txt";
+  # Root-only host key; admins decrypt with the YubiKeys or the paper key instead
+  sops.age.keyFile = "/var/lib/sops-nix/key.txt";
   sops.age.generateKey = false;
 
   sops.secrets.restic_b2_account_id = {
