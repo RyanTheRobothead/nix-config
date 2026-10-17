@@ -165,7 +165,9 @@
     initialize = true;
     repository = "b2:ryan-the-robothead-aegis-backup";
     paths = [
-      "/home/luckierdodge/aegis-backup"
+      # The real mount, not the ~/aegis-backup symlink: restic stores a
+      # symlink given as a path as the link itself, without its contents
+      "/mnt/aegis-backup"
       "/home/luckierdodge/repos"
     ];
 
@@ -188,6 +190,10 @@
     # Structural check after every backup; uses the local cache, so it's cheap
     checkOpts = [ "--with-cache" ];
   };
+
+  # Fail the backup if the disk isn't mounted, rather than snapshotting an
+  # empty mountpoint
+  systemd.services.restic-backups-backblaze.unitConfig.RequiresMountsFor = [ "/mnt/aegis-backup" ];
 
   # Weekly check that downloads and verifies a random 5% of pack data, so
   # the whole repository gets read over time. Reuses the backup unit's
