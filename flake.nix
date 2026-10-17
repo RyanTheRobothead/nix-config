@@ -1,10 +1,9 @@
 {
-  description = "Nix configs for my various NixOS, nix-darwin, and HomeManager-powered machines";
+  description = "Nix configs for my various NixOS and HomeManager-powered machines";
 
   inputs = {
     # Nixpkgs
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
-    nixpkgs-darwin.url = "github:nixos/nixpkgs/nixpkgs-26.05-darwin";
     # nixpkgs-legacy.url = "github:nixos/nixpkgs/nixos-23.11";
     # You can access packages and modules from different nixpkgs revs
     # at the same time. Here's an working example:
@@ -26,10 +25,6 @@
     # sops-nix
     sops-nix.url = "github:Mic92/sops-nix";
 
-    # darwin (for supporting Mac's ugh)
-    darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
-    darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
-
     # nix-flatpak
     nix-flatpak.url = "github:gmodena/nix-flatpak";
 
@@ -47,7 +42,6 @@
       home-manager,
       sops-nix,
       vscode-server,
-      darwin,
       nix-flatpak,
       plasma-manager,
       ...
@@ -59,8 +53,6 @@
         "aarch64-linux"
         "i686-linux"
         "x86_64-linux"
-        "aarch64-darwin"
-        "x86_64-darwin"
       ];
       # This is a function that generates an attribute by calling a function you
       # pass to it, with each system as an argument
@@ -145,84 +137,9 @@
           };
       };
 
-      # Nix Darwin Configurations, for our Mac's (ugh)
-      darwinConfigurations = {
-        primemover =
-          let
-            system = "aarch64-darwin";
-            nixpkgsUnstableWithUnfree = mkUnstablePkgs system;
-          in
-          darwin.lib.darwinSystem {
-            specialArgs = {
-              inherit inputs outputs;
-              nixpkgs-unstable = nixpkgsUnstableWithUnfree;
-            };
-            modules = [
-              ./darwin/primemover.nix
-              home-manager.darwinModules.home-manager
-              (
-                { config, pkgs, ... }:
-                {
-                  home-manager.useUserPackages = true;
-                  home-manager.users.luckierdodge =
-                    let
-                      lib = pkgs.lib;
-                    in
-                    import ./home-manager/home.nix {
-                      inherit
-                        config
-                        pkgs
-                        lib
-                        inputs
-                        outputs
-                        ;
-                      nixpkgs-unstable = nixpkgsUnstableWithUnfree;
-                    };
-                }
-              )
-            ];
-            specialArgs = {
-              system.stateVersion = 4;
-            };
-          };
-      };
-
       # Standalone home-manager configuration entrypoint
       # Available through 'home-manager --flake .#your-username@your-hostname'
       homeConfigurations = {
-        "luckierdodge@stark" =
-          let
-            system = "x86_64-linux";
-            nixpkgsUnstableWithUnfree = mkUnstablePkgs system;
-          in
-          home-manager.lib.homeManagerConfiguration {
-            pkgs = nixpkgs.legacyPackages.${system};
-            extraSpecialArgs = {
-              inherit inputs outputs;
-              nixpkgs-unstable = nixpkgsUnstableWithUnfree;
-            };
-            modules = [
-              # > Our main home-manager configuration file <
-              ./home-manager/home.nix
-              ./home-manager/stark.nix
-            ];
-          };
-        "luckierdodge@lastprism" =
-          let
-            system = "x86_64-linux";
-            nixpkgsUnstableWithUnfree = mkUnstablePkgs system;
-          in
-          home-manager.lib.homeManagerConfiguration {
-            pkgs = nixpkgs.legacyPackages.${system};
-            extraSpecialArgs = {
-              inherit inputs outputs;
-              nixpkgs-unstable = nixpkgsUnstableWithUnfree;
-            };
-            modules = [
-              ./home-manager/home.nix
-              ./home-manager/lastprism.nix
-            ];
-          };
         "luckierdodge@cerberus" =
           let
             system = "x86_64-linux";

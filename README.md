@@ -6,9 +6,7 @@ System configurations using nix.
 
 ```
 # Nix OS
-sudo nixos-rebuild switch --impure --flake .#killingtime
+sudo nixos-rebuild switch --flake .#aegis
 # Home Manager
 home-manager --flake .#luckierdodge@cerberus switch
-# Darwin
-sudo darwin-rebuild switch --flake .#primemover
 ```

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a personal Nix configuration repository managing system configurations across multiple machines using Nix flakes, NixOS, nix-darwin (macOS), and Home Manager. The repository supports hybrid Linux/macOS environments with declarative system and user configurations.
+This is a personal Nix configuration repository managing system configurations across multiple machines using Nix flakes, NixOS, and Home Manager, with declarative system and user configurations.
 
 ## System Update Commands
 
@@ -22,13 +22,11 @@ just auto-switch
 just auto-build
 
 # Host-specific commands
-just switch <host>           # NixOS hosts: aegis, killingtime, bigbox
-just switch-darwin <host>    # Darwin hosts: primemover
-just switch-hm <host>        # Home Manager: luckierdodge@stark, luckierdodge@lastprism, luckierdodge@cerberus
+just switch <host>           # NixOS hosts: aegis
+just switch-hm <host>        # Home Manager: luckierdodge@cerberus
 
 # Build without switching
 just build <host>
-just build-darwin <host>
 just build-hm <host>
 
 # Flake management
@@ -53,24 +51,14 @@ just hosts                  # Show all available hosts
 ```bash
 # Apply system configuration for specific hosts
 sudo nixos-rebuild switch --flake .#aegis
-sudo nixos-rebuild switch --flake .#killingtime
-sudo nixos-rebuild switch --flake .#bigbox
 
 # Build without switching (test configuration)
 sudo nixos-rebuild build --flake .#hostname
 ```
 
-#### macOS Systems (nix-darwin)
-```bash
-# Apply Darwin configuration
-sudo darwin-rebuild switch --flake .#primemover
-```
-
 #### Home Manager (Standalone)
 ```bash
 # Apply user environment configurations
-home-manager switch --flake .#luckierdodge@stark
-home-manager switch --flake .#luckierdodge@lastprism
 home-manager switch --flake .#luckierdodge@cerberus
 ```
 
@@ -172,7 +160,6 @@ one track mean a dirty or damaged disc.
 ### Flake Structure
 - **flake.nix**: Main entry point defining all system configurations, inputs, and outputs
 - **nixos/**: NixOS system configurations per machine
-- **darwin/**: macOS nix-darwin configurations
 - **home-manager/**: User environment configurations (can be standalone or integrated)
 - **modules/**: Reusable modules for both NixOS and Home Manager
 - **overlays/**: Package overlays and modifications
@@ -180,13 +167,12 @@ one track mean a dirty or damaged disc.
 
 ### Configuration Pattern
 The repository uses a modular approach where:
-1. Each machine has its own configuration file (e.g., `nixos/aegis.nix`, `darwin/primemover.nix`)
+1. Each machine has its own configuration file (e.g., `nixos/aegis.nix`, `home-manager/cerberus.nix`)
 2. Common base configurations are in `nixos/configuration.nix` and `home-manager/home.nix`
 3. Machine-specific configurations import and extend the base configurations
 4. Home Manager is integrated into system configurations for seamless user environment management
 
 ### Key Features
-- **Multi-platform**: Supports both NixOS and macOS via nix-darwin
 - **Secrets Management**: Uses sops-nix for encrypted secrets
 - **Remote Development**: Includes VSCode Server configuration
 - **Container Support**: Docker configuration with IPv6 support
@@ -195,10 +181,7 @@ The repository uses a modular approach where:
 
 ### Machine Configurations
 - **aegis**: x86_64-linux NixOS system
-- **killingtime**: x86_64-linux NixOS system
-- **bigbox**: x86_64-linux NixOS system
-- **primemover**: aarch64-darwin macOS system
-- **stark, lastprism, cerberus**: Home Manager only configurations
+- **cerberus**: Home Manager only configuration
 
 ### Development Environment
 The configuration includes development tools like:

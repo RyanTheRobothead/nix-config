@@ -6,9 +6,8 @@ default:
     @just --list
 
 # Variables for host configurations
-nixos_hosts := "aegis killingtime bigbox"
-darwin_hosts := "primemover"
-hm_hosts := "luckierdodge@stark luckierdodge@lastprism luckierdodge@cerberus"
+nixos_hosts := "aegis"
+hm_hosts := "luckierdodge@cerberus"
 
 # NixOS Commands
 
@@ -45,30 +44,6 @@ test host="": kill-discord
     echo "Testing NixOS configuration for {{ host }}..."
     sudo nixos-rebuild test --flake .#{{ host }}
 
-# Darwin Commands
-
-# Build Darwin configuration without switching
-build-darwin host="":
-    #!/usr/bin/env bash
-    if [ -z "{{ host }}" ]; then
-        echo "Available Darwin hosts: {{ darwin_hosts }}"
-        echo "Usage: just build-darwin <host>"
-        exit 1
-    fi
-    echo "Building Darwin configuration for {{ host }}..."
-    darwin-rebuild build --flake .#{{ host }}
-
-# Switch to Darwin configuration
-switch-darwin host="":
-    #!/usr/bin/env bash
-    if [ -z "{{ host }}" ]; then
-        echo "Available Darwin hosts: {{ darwin_hosts }}"
-        echo "Usage: just switch-darwin <host>"
-        exit 1
-    fi
-    echo "Switching to Darwin configuration for {{ host }}..."
-    sudo darwin-rebuild switch --flake .#{{ host }}
-
 # Home Manager Commands
 
 # Build Home Manager configuration without switching
@@ -102,21 +77,9 @@ auto-switch: kill-discord
     echo "Detected hostname: $hostname"
 
     case $hostname in
-        aegis|killingtime|bigbox)
+        aegis)
             echo "Switching NixOS configuration for $hostname..."
             sudo nixos-rebuild switch --flake .#$hostname
-            ;;
-        primemover)
-            echo "Switching Darwin configuration for $hostname..."
-            sudo darwin-rebuild switch --flake .#$hostname
-            ;;
-        stark)
-            echo "Switching Home Manager configuration for luckierdodge@$hostname..."
-            home-manager switch --flake .#luckierdodge@$hostname
-            ;;
-        lastprism)
-            echo "Switching Home Manager configuration for luckierdodge@$hostname..."
-            home-manager switch --flake .#luckierdodge@$hostname
             ;;
         cerberus)
             echo "Switching Home Manager configuration for luckierdodge@$hostname..."
@@ -126,7 +89,6 @@ auto-switch: kill-discord
             echo "Unknown hostname: $hostname"
             echo "Available configurations:"
             echo "  NixOS: {{ nixos_hosts }}"
-            echo "  Darwin: {{ darwin_hosts }}"
             echo "  Home Manager: {{ hm_hosts }}"
             exit 1
             ;;
@@ -139,15 +101,11 @@ auto-build:
     echo "Detected hostname: $hostname"
 
     case $hostname in
-        aegis|killingtime|bigbox)
+        aegis)
             echo "Building NixOS configuration for $hostname..."
             sudo nixos-rebuild build --flake .#$hostname
             ;;
-        primemover)
-            echo "Building Darwin configuration for $hostname..."
-            darwin-rebuild build --flake .#$hostname
-            ;;
-        stark|lastprism|cerberus)
+        cerberus)
             echo "Building Home Manager configuration for luckierdodge@$hostname..."
             home-manager build --flake .#luckierdodge@$hostname
             ;;
@@ -155,7 +113,6 @@ auto-build:
             echo "Unknown hostname: $hostname"
             echo "Available configurations:"
             echo "  NixOS: {{ nixos_hosts }}"
-            echo "  Darwin: {{ darwin_hosts }}"
             echo "  Home Manager: {{ hm_hosts }}"
             exit 1
             ;;
@@ -238,12 +195,10 @@ repair:
 hosts:
     echo "Available configurations:"
     echo "  NixOS hosts: {{ nixos_hosts }}"
-    echo "  Darwin hosts: {{ darwin_hosts }}"
     echo "  Home Manager hosts: {{ hm_hosts }}"
     echo ""
     echo "Commands:"
     echo "  just switch <host>        - Switch NixOS configuration"
-    echo "  just switch-darwin <host> - Switch Darwin configuration"
     echo "  just switch-hm <host>     - Switch Home Manager configuration"
     echo "  just auto-switch          - Auto-detect and switch current host"
     echo "  just auto-build           - Auto-detect and build current host"
