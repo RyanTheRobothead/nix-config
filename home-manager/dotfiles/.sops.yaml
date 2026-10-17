@@ -1,7 +1,14 @@
 keys:
   - &server_aegis age16ewyt5mhydqz9eadx5m6kctdkdl8jj2yynpt8k8f0n6qnctqye5qqrym48
+  # Offline admin recipients: any one of these can decrypt every secret
+  - &admin_yubikey_37817094 age1yubikey1qfcmd7ne8l76krav3vfdrx9lm2jg0c6jzrjd8amfvdzhzx6es6yuynav0k5
+  - &admin_yubikey_37817095 age1yubikey1qtlgk5vuyyvzzjf7vepx4ynytzf7sgqvds5axjgtkpeyh4a9jrlq658099j
+  - &admin_paper age1xjp2vldqakuc09ykwuw8fgw2vc2sraac8ljcc3upm0mlggu6te7qle3rpj
 creation_rules:
   - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
     - age:
       - *server_aegis
+      - *admin_yubikey_37817094
+      - *admin_yubikey_37817095
+      - *admin_paper
