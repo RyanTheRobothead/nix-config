@@ -35,7 +35,10 @@ Use: B2_ACCOUNT_ID=<keyID> B2_ACCOUNT_KEY=<applicationKey> restic -r <repository
 URL:             FILL-ME
 Account email:   FILL-ME
 Master password: FILL-ME
-2FA recovery:    FILL-ME
+2FA recovery code (Settings > Security > Two-step login > View recovery code):
+                 FILL-ME
+Admin panel password (/admin; config.json holds only its Argon2 hash):
+                 FILL-ME
 
 == GitHub ==
 Username:        RyanTheRobothead

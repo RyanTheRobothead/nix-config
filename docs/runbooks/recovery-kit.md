@@ -17,7 +17,7 @@ The template is `recovery-kit.template`; the build script fills in the restic pa
 | Primary email password and recovery codes | Password resets for every other account go through it |
 | B2 login, 2FA recovery codes, master application key | Gates every backup |
 | Restic break-glass password (`admin@recovery-kit` key) | Decrypts the backups, independent of the hosts' key |
-| Vaultwarden URL, master password, 2FA recovery code | Opens everything else once restored |
+| Vaultwarden URL, master password, 2FA recovery code, admin panel password | Opens everything else once restored |
 | GitHub, Linode and registrar logins and recovery codes | Needed to rebuild the VPS, DNS and the repo mirror |
 
 Not in it: the sops paper identity (it lives on paper, and the kit is encrypted to it),
