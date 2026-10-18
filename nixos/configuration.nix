@@ -325,6 +325,9 @@
     ];
   };
   environment.sessionVariables = {
+    # Matches home-manager's EDITOR; without it /etc/set-environment exports
+    # nano and overrides home-manager in every new shell
+    EDITOR = "nvim";
     XDG_DATA_DIRS = [
       "/var/lib/flatpak/exports/share"
       "$HOME/.local/share/flatpak/exports/share"
