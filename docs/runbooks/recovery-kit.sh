@@ -20,14 +20,16 @@ recipients() {
   grep -oP '&admin_\S+\s+\Kage1\S+' "$REPO/.sops.yaml"
 }
 
-# Open a file in the editor with swap, undo, backup and shada files off, so no copy lands on disk
+# Open a file in the editor with swap, undo, backup and shada files off, so no copy lands on disk.
+# VISUAL wins over EDITOR, as is conventional for full-screen editors.
 edit_secret() {
-  case "$(basename "${EDITOR:-vi}")" in
+  local editor=${VISUAL:-${EDITOR:-vi}}
+  case "$(basename "$editor")" in
     nvim|vim|vi)
-      "${EDITOR:-vi}" -n -i NONE --cmd 'set noundofile nobackup nowritebackup' "$1" ;;
+      "$editor" -n -i NONE --cmd 'set noundofile nobackup nowritebackup' "$1" ;;
     *)
-      echo "warning: \$EDITOR is not vim/nvim; make sure it writes no swap or backup files" >&2
-      "${EDITOR}" "$1" ;;
+      echo "warning: $editor is not vim/nvim; make sure it writes no swap or backup files" >&2
+      "$editor" "$1" ;;
   esac
 }
 
@@ -67,7 +69,7 @@ build() {
     printf '%s\n' "${template//@RESTIC_BREAKGLASS@/$(<"$pw")}" > "$plain"
   fi
 
-  echo "Opening the kit in $EDITOR. Paste each value from Vaultwarden over its FILL-ME, then save and quit."
+  echo "Opening the kit in ${VISUAL:-${EDITOR:-vi}}. Paste each value from Vaultwarden over its FILL-ME, then save and quit."
   edit_secret "$plain"
   if grep -q 'FILL-ME' "$plain"; then
     die "FILL-ME placeholders remain; nothing was written (re-run when you have every value)"
