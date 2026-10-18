@@ -300,4 +300,36 @@
       RandomizedDelaySec = "1h";
     };
   };
+
+  # APC Back-UPS NS 600M1 over USB: shut down cleanly on low battery to protect
+  # btrfs and the databases. upsmon and upsd only talk over localhost.
+  sops.secrets.nut_upsmon_password = {
+    format = "yaml";
+    sopsFile = ../secrets/nut.yaml;
+  };
+  power.ups = {
+    enable = true;
+    mode = "standalone";
+    ups.apc = {
+      driver = "usbhid-ups";
+      port = "auto";
+      description = "APC Back-UPS NS 600M1";
+      directives = [
+        # The UPS's own low-battery signal comes with too little runtime left
+        # for a desktop under load, so declare low battery at these thresholds
+        "ignorelb"
+        "override.battery.charge.low = 50"
+        "override.battery.runtime.low = 300"
+      ];
+    };
+    users.upsmon = {
+      passwordFile = config.sops.secrets.nut_upsmon_password.path;
+      upsmon = "primary";
+    };
+    upsmon.monitor.apc = {
+      system = "apc@localhost";
+      user = "upsmon";
+      type = "primary";
+    };
+  };
 }

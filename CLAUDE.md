@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+HomeLab Modernization Plan (Claude Doc): https://claude.ai/artifact/Y3TRTupuLX8przJPHoxxdd#295d0dee-1098.m3p1vchdwre.5273
+
 ## Repository Overview
 
 This is a personal Nix configuration repository managing system configurations across multiple machines using Nix flakes, NixOS, and Home Manager, with declarative system and user configurations.
