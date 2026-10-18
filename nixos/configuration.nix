@@ -171,6 +171,7 @@
     wl-clipboard
     openscad
     vlc
+    lm_sensors
   ];
 
   programs.nix-ld.enable = true;
