@@ -27,6 +27,7 @@
     ./configuration.nix
     # aegis is the only host with an optical drive
     ../modules/nixos/audiobook-ripper.nix
+    ../modules/nixos/renovate.nix
     #    <sops-nix/modules/sops>
   ];
 
