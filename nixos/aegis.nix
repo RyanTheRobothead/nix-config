@@ -73,14 +73,39 @@
 
   # Set hostname
   networking.hostName = "aegis";
-  networking.firewall.enable = false;
   networking.nat = {
     enable = true;
     internalInterfaces = [ "ve-+" ];
     externalInterface = "eth0";
     enableIPv6 = true;
   };
-  networking.firewall.trustedInterfaces = [ "br+" ];
+  # The firewall only sees host listeners: Docker's published ports bypass it,
+  # so those are scoped by their bind address in the compose files instead.
+  # The tailnet and Docker bridges are trusted; the LAN gets SSH (opened by
+  # openssh), Steam and Avahi (opened by their modules), and the ports below.
+  networking.firewall.enable = true;
+  networking.firewall.trustedInterfaces = [
+    "tailscale0"
+    "br+"
+  ];
+  networking.firewall.allowedTCPPorts = [
+    8096 # Jellyfin (host networking)
+    32400 # Plex (host networking)
+  ];
+  networking.firewall.allowedUDPPorts = [
+    1900 # DLNA/SSDP discovery, Plex and Jellyfin
+    7359 # Jellyfin client discovery
+    32410 # Plex GDM discovery
+    32412
+    32413
+    32414
+  ];
+  # Direct WireGuard connections instead of falling back to DERP relays
+  services.tailscale.openFirewall = true;
+  # Lets Docker bind admin UIs to the Tailscale address before tailscaled has
+  # brought it up at boot
+  boot.kernel.sysctl."net.ipv4.ip_nonlocal_bind" = 1;
+  boot.kernel.sysctl."net.ipv6.ip_nonlocal_bind" = 1;
   networking.firewall = {
     extraCommands = "
       iptables -I nixos-fw 1 -i br+ -j ACCEPT
