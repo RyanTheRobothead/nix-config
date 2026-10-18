@@ -111,6 +111,15 @@
 
   # Set hostname
   networking.hostName = "aegis";
+  # Resolve aegis to its tailnet address here too, as MagicDNS does on every
+  # other device. NixOS maps the hostname to 127.0.0.2 by default, where the
+  # tailnet-only services (the *arr apps, code-server, Pi-hole admin) aren't
+  # listening, so links like http://aegis:8989 failed on Aegis itself.
+  networking.hosts = {
+    "127.0.0.2" = lib.mkForce [ ];
+    "100.117.195.49" = [ "aegis" ];
+    "fd7a:115c:a1e0::b537:c331" = [ "aegis" ];
+  };
   networking.nat = {
     enable = true;
     internalInterfaces = [ "ve-+" ];
