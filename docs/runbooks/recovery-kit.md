@@ -115,3 +115,4 @@ Repo: https://github.com/RyanTheRobothead/nix-config (docs/runbooks/)
 
 | Date | Event | sha256 of recovery-kit.age | Verified with |
 | --- | --- | --- | --- |
+| 2026-10-18 | First build; restic break-glass key `6766c700` | `5b590fbc038a4759dcc1d5b5f559b7314f3d522473ded9431212b730ff446764` | YubiKey 37817094 (round trip in the build) |
