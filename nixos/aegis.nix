@@ -113,7 +113,7 @@
   networking.nat = {
     enable = true;
     internalInterfaces = [ "ve-+" ];
-    externalInterface = "eth0";
+    externalInterface = "enp191s0";
     enableIPv6 = true;
   };
   # The firewall only sees host listeners: Docker's published ports bypass it,
