@@ -71,6 +71,43 @@
     };
   };
 
+  # The *arr stack shares gluetun's network namespace (network_mode:
+  # service:gluetun). When gluetun restarts (autoheal does this when the VPN
+  # fails its healthcheck) the dependents keep running in the dead namespace
+  # with no network. Restarting them rejoins gluetun's current namespace, so
+  # do that whenever gluetun starts, and once at startup to catch any missed.
+  systemd.services.gluetun-dependents = {
+    description = "Restart containers stranded by a gluetun restart";
+    wantedBy = [ "multi-user.target" ];
+    requires = [ "docker.service" ];
+    after = [ "docker.service" ];
+    path = [ config.virtualisation.docker.package ];
+    script = ''
+      heal() {
+        gid=$(docker inspect -f '{{.Id}}' gluetun 2>/dev/null) || return 0
+        gpid=$(docker inspect -f '{{.State.Pid}}' gluetun)
+        [ "$gpid" -gt 0 ] || return 0
+        gns=$(readlink "/proc/$gpid/ns/net")
+        docker ps -q | xargs -r docker inspect \
+          -f '{{.Name}} {{.HostConfig.NetworkMode}} {{.State.Pid}}' |
+          while read -r name mode pid; do
+            [ "$mode" = "container:$gid" ] || continue
+            [ "$(readlink "/proc/$pid/ns/net")" = "$gns" ] && continue
+            echo "restarting ''${name#/} into gluetun's namespace"
+            docker restart "''${name#/}" || true
+          done
+      }
+      heal
+      docker events --filter type=container --filter container=gluetun \
+        --filter event=start --format '{{.Action}}' |
+        while read -r _; do heal; done
+    '';
+    serviceConfig = {
+      Restart = "always";
+      RestartSec = 10;
+    };
+  };
+
   # Set hostname
   networking.hostName = "aegis";
   networking.nat = {
