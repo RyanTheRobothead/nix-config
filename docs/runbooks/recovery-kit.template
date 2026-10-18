@@ -1,0 +1,60 @@
+RECOVERY KIT: root secrets for Ryan's homelab
+Built: (set by recovery-kit.sh)
+
+Recovery order (details in README.txt next to this file, and docs/runbooks/recovery-kit.md):
+  1. Sign in to email with its recovery codes, then B2 with its login and recovery codes.
+  2. Restore Aegis's restic repo with the B2 master key and the break-glass password below.
+  3. Restore Vaultwarden from the volume tarball (docs/runbooks/restore.md) and unlock it.
+  4. Clone github.com/RyanTheRobothead/nix-config, decrypt sops with a YubiKey or the
+     paper identity, and rebuild.
+
+The sops admin paper identity is NOT in this file: it lives on paper in the home safe.
+Replace every FILL-ME below. Write "none" where an item doesn't exist.
+
+== Primary email ==
+Address:         FILL-ME
+Password:        FILL-ME
+Recovery codes:  FILL-ME
+
+== Backblaze B2 ==
+Login email:     FILL-ME
+Password:        FILL-ME
+2FA recovery:    FILL-ME
+Master application key
+  keyID:         FILL-ME
+  applicationKey: FILL-ME
+Buckets: ryan-the-robothead-aegis-backup (restic), plus the recovery-kit bucket: FILL-ME
+
+== Restic ==
+Repository:      b2:ryan-the-robothead-aegis-backup
+Break-glass password (key labelled admin@recovery-kit; the hosts use a different key):
+  @RESTIC_BREAKGLASS@
+Use: B2_ACCOUNT_ID=<keyID> B2_ACCOUNT_KEY=<applicationKey> restic -r <repository> snapshots
+
+== Vaultwarden ==
+URL:             FILL-ME
+Account email:   FILL-ME
+Master password: FILL-ME
+2FA recovery:    FILL-ME
+
+== GitHub ==
+Username:        RyanTheRobothead
+Password:        FILL-ME
+Recovery codes:  FILL-ME
+
+== Linode (Cerberus, later SleeperService) ==
+Login:           FILL-ME
+Password:        FILL-ME
+2FA recovery:    FILL-ME
+
+== Domain registrar and DNS (ryandlewis.dev) ==
+Registrar today: Squarespace. Regenerate this kit after moving DNS to deSEC and registration to Porkbun.
+Login:           FILL-ME
+Password:        FILL-ME
+2FA recovery:    FILL-ME
+
+== Tailscale ==
+Signs in with:   FILL-ME
+
+== Notes ==
+none
