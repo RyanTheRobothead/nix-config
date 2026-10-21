@@ -49,7 +49,8 @@ if [ -n "$DEST" ]; then
   if [ -n "$SSH_KEY" ]; then ssh_opts+=(-i "$SSH_KEY"); fi
   ssh "${ssh_opts[@]}" "$DEST" inventory >"$tmp/raw"
 else
-  sh -c "$INVENTORY_CMD" >"$tmp/raw"
+  # Not sh: a systemd unit's PATH has only the runtime inputs
+  "$BASH" -c "$INVENTORY_CMD" >"$tmp/raw"
 fi
 
 jq -s --arg host "$HOST" --slurpfile exposure "$EXPOSURE" '
