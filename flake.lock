@@ -147,8 +147,29 @@
         "nixpkgs": "nixpkgs",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "plasma-manager": "plasma-manager",
+        "schedule-bot": "schedule-bot",
         "sops-nix": "sops-nix",
         "vscode-server": "vscode-server"
+      }
+    },
+    "schedule-bot": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792548555,
+        "narHash": "sha256-Lisz1cONNGRy3K6RyodzGgNi04+qlCpS20eBLWdK84g=",
+        "ref": "refs/heads/main",
+        "rev": "a2a305ddb118e41e6d7e2abec98b0b0afdda1b25",
+        "revCount": 3,
+        "type": "git",
+        "url": "file:///home/luckierdodge/repos/schedule_bot"
+      },
+      "original": {
+        "type": "git",
+        "url": "file:///home/luckierdodge/repos/schedule_bot"
       }
     },
     "sops-nix": {
