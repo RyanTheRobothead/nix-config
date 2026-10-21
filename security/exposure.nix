@@ -32,7 +32,6 @@
     public = [
       "swag"
       # Bound on every interface, so reachable on the public IP
-      "gatus"
       "smokeping"
     ];
   };
