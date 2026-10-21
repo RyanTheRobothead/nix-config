@@ -24,5 +24,11 @@
     enable = true;
     environmentFile = config.sops.templates."schedule-bot-env".path;
     # timezone defaults to time.timeZone (America/Chicago)
+    # For Gatus (dockerfiles/aegis/gatus/config.yaml). Listening on all addresses
+    # is fine: the firewall only lets the tailnet and Docker bridges reach it.
+    healthCheck = {
+      port = 8095;
+      address = "0.0.0.0";
+    };
   };
 }
