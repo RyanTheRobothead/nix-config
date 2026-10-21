@@ -17,9 +17,15 @@
     # Daily; each repo's schedule decides when update PRs actually open
     schedule = "*-*-* 04:00:00";
     credentials.RENOVATE_TOKEN = config.sops.secrets.renovate_github_token.path;
+    # The nix manager shells out to nix to update flake.lock; it talks to the
+    # daemon over its socket, which the sandbox allows
+    runtimePackages = [ config.nix.package ];
     settings = {
       platform = "github";
-      repositories = [ "RyanTheRobothead/dockerfiles" ];
+      repositories = [
+        "RyanTheRobothead/dockerfiles"
+        "RyanTheRobothead/nix-config"
+      ];
       # Repos carry their own renovate.json; never open onboarding PRs
       onboarding = false;
       requireConfig = "required";

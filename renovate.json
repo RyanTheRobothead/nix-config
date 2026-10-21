@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Run by the self-hosted Renovate on Aegis (modules/nixos/renovate.nix).",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":enablePreCommit"
+  ],
+  "timezone": "America/Chicago",
+  "dependencyDashboard": true,
+  "nix": {
+    "description": "Beta and opt-in; runs nix on Aegis to update flake.lock",
+    "enabled": true
+  },
+  "lockFileMaintenance": {
+    "description": "Refresh every flake input in one weekly PR",
+    "enabled": true,
+    "schedule": ["before 6am on saturday"]
+  },
+  "packageRules": [
+    {
+      "description": "Batch routine updates into one weekly PR, like dockerfiles",
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "weekly updates",
+      "schedule": ["before 6am on saturday"]
+    },
+    {
+      "description": "Majors get their own PRs, also weekly",
+      "matchUpdateTypes": ["major"],
+      "schedule": ["before 6am on saturday"]
+    }
+  ]
+}
