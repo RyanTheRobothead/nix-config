@@ -29,10 +29,6 @@
 
   cerberus = {
     internetFacing = true;
-    public = [
-      "swag"
-      # Bound on every interface, so reachable on the public IP
-      "smokeping"
-    ];
+    public = [ "swag" ];
   };
 }
