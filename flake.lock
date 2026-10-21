@@ -159,11 +159,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792551514,
-        "narHash": "sha256-XS55podO+fxvaacRngQCf4pAjqC35c8dtd09rUTfgXY=",
+        "lastModified": 1792552152,
+        "narHash": "sha256-9xN4pWmCvw2p0vFOJjeUXaUdgUE1tkJBZfzyQ+46OvI=",
         "owner": "RyanTheRobothead",
         "repo": "schedule_bot",
-        "rev": "f699d54500665f245bde8b2278cce40216d019ea",
+        "rev": "fe86b3da81d8aa60f88be6ac9dceb55191b94786",
         "type": "github"
       },
       "original": {
