@@ -29,6 +29,7 @@
     ../modules/nixos/audiobook-ripper.nix
     ../modules/nixos/renovate.nix
     ../modules/nixos/schedule-bot.nix
+    ../modules/nixos/vulnscan.nix
     #    <sops-nix/modules/sops>
   ];
 
