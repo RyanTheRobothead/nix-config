@@ -34,7 +34,7 @@
     plasma-manager.inputs.home-manager.follows = "home-manager";
 
     # Discord bot for scheduling game nights (modules/nixos/schedule-bot.nix)
-    schedule-bot.url = "git+file:///home/luckierdodge/repos/schedule_bot";
+    schedule-bot.url = "github:RyanTheRobothead/schedule_bot";
     schedule-bot.inputs.nixpkgs.follows = "nixpkgs";
   };
 
