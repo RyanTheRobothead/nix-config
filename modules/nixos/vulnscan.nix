@@ -282,7 +282,7 @@ in
     script = ''
       systemctl start vulnscan-inventory.service || true
       docker events --filter type=container --filter event=start \
-        --format '{{.ID}}' |
+        --format '{{.Action}}' |
         while read -r _; do
           # compose up starts containers in bursts; let it settle first
           while read -r -t 30 _; do :; done
@@ -291,7 +291,11 @@ in
     '';
     serviceConfig = {
       Restart = "always";
+      # Each start runs an inventory, so a watcher that keeps dying must not
+      # restart every 10 seconds forever: back off to an hour
       RestartSec = 10;
+      RestartSteps = 8;
+      RestartMaxDelaySec = "1h";
     };
   };
 }
