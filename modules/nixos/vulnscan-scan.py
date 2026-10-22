@@ -102,11 +102,17 @@ def image_source(c):
 
 def syft(source, out):
     tmp = out.with_name(f".{out.name}.part")
-    subprocess.run(
-        ["syft", "-q", source, "-o", f"cyclonedx-json={tmp}"],
-        check=True,
+    # Not -q: that hides the reason when a pull fails
+    run = subprocess.run(
+        ["syft", source, "-o", f"cyclonedx-json={tmp}"],
+        capture_output=True,
+        text=True,
         env=TOOL_ENV,
     )
+    if run.returncode != 0:
+        tmp.unlink(missing_ok=True)
+        reason = " | ".join(run.stderr.strip().splitlines()[-3:])
+        raise RuntimeError(f"syft exited {run.returncode}: {reason}")
     os.replace(tmp, out)
 
 
@@ -127,7 +133,7 @@ def update_sboms(cs):
         log(f"sbom {c['host']}/{c['name']} from {source}")
         try:
             syft(source, out)
-        except subprocess.CalledProcessError as e:
+        except RuntimeError as e:
             # One unreadable image shouldn't stop the rest being scanned
             log(f"warning: syft failed for {c['host']}/{c['name']}: {e}")
     for f in list(SBOMS.glob("*.cdx.json")) + list(RESULTS.glob("*.json")):

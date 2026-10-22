@@ -101,14 +101,24 @@ jq -r '.containers[] | select(.unlistedPublic) | .name' "$tmp/inventory.json" |
     echo "warning: $HOST/$name publishes on every interface of an internet-facing host but isn't listed in exposure.nix" >&2
   done
 
-# inventory/ is shared with the vulnscan user: mktemp never reuses a name
-# someone else planted, and mv replaces the old file without following it
+count=$(jq '.containers | length' "$tmp/inventory.json")
 mkdir -p "$STATE/inventory"
-new=$(mktemp "$STATE/inventory/.$HOST.XXXXXX")
-cat "$tmp/inventory.json" >"$new"
-share "$new"
-mv -f "$new" "$STATE/inventory/$HOST.json"
-echo "$HOST: $(jq '.containers | length' "$tmp/inventory.json") containers"
+current="$STATE/inventory/$HOST.json"
+# Rewriting triggers a scan, so leave the file alone when nothing changed;
+# its generated time is then when the containers last changed
+if [ -e "$current" ] &&
+  jq -e --slurpfile new "$tmp/inventory.json" \
+    '.containers == $new[0].containers' "$current" >/dev/null; then
+  echo "$HOST: $count containers, unchanged"
+else
+  # inventory/ is shared with the vulnscan user: mktemp never reuses a name
+  # someone else planted, and mv replaces the old file without following it
+  new=$(mktemp "$STATE/inventory/.$HOST.XXXXXX")
+  cat "$tmp/inventory.json" >"$new"
+  share "$new"
+  mv -f "$new" "$current"
+  echo "$HOST: $count containers"
+fi
 
 # Remote images are pulled by digest from their registry when scanned
 [ -z "$DEST" ] || exit 0
