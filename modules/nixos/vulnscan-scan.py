@@ -188,7 +188,7 @@ def update_sboms(cs):
 
 
 def update_host_sbom():
-    """SBOM this host's system closure when it changes (after a switch).
+    """SBOM this host's system closure when it has changed since the last.
 
     Scanned in a later step; generated here so it tracks every switch.
     """

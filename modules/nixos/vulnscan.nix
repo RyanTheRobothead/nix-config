@@ -7,7 +7,7 @@
 # nothing but run the inventory command.
 #
 # Scan: Syft SBOMs each new digest (Aegis's from the spool, Cerberus's from
-# its registry) and sbomnix the system after each switch; Grype rescans every
+# its registry) and sbomnix the system when it changes; Grype rescans every
 # SBOM every 6 hours. Results land in report/report.json and a textfile
 # metric. New known-exploited findings on public services page Discord at
 # once; the daily summary lists those and public Criticals, then anything else
@@ -261,14 +261,12 @@ in
   };
   systemd.timers.vulnscan-scan.timerConfig.Persistent = true;
 
-  # New inventories mean new digests to SBOM; a new system means a new
-  # closure SBOM. The 6-hourly timer catches anything these miss.
+  # New inventories mean new digests to SBOM. A switch replaces the
+  # /run/current-system symlink, which PathChanged doesn't see, so a new
+  # system's SBOM waits for the 6-hourly timer.
   systemd.paths.vulnscan-scan = {
     wantedBy = [ "paths.target" ];
-    pathConfig.PathChanged = [
-      "/var/lib/vulnscan/inventory"
-      "/run/current-system"
-    ];
+    pathConfig.PathChanged = "/var/lib/vulnscan/inventory";
   };
 
   systemd.services.vulnscan-summary = {
