@@ -9,9 +9,9 @@
 # Scan: Syft SBOMs each new digest (Aegis's from the spool, Cerberus's from
 # its registry) and sbomnix the system after each switch; Grype rescans every
 # SBOM every 6 hours. Results land in report/report.json and a textfile
-# metric. New Critical or known-exploited findings on public services page
-# Discord at once, everything else goes in the daily summary, and any vulnscan
-# unit failing says so there too.
+# metric. New known-exploited findings on public services page Discord at
+# once; the daily summary lists those and public Criticals, then anything else
+# new; and any vulnscan unit failing says so there too.
 {
   config,
   lib,

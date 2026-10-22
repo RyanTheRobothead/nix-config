@@ -7,9 +7,9 @@
 Reads the inventories vulnscan-inventory writes. Image SBOMs come from the
 saved archive for this host's images and from the registry, by digest, for
 other hosts'. A finding is one CVE in one container, however many of its
-packages carry it. A container's finding pages when the container is public
-and the finding is Critical or in CISA's Known Exploited Vulnerabilities
-catalog; everything else waits for the daily summary.
+packages carry it. A finding pages when its container is public and it is in
+CISA's Known Exploited Vulnerabilities catalog. The daily summary lists those
+and every Critical on a public service, then anything else new.
 
 Paths and the webhook come from VULNSCAN_* env vars set by the NixOS module.
 """
@@ -222,9 +222,11 @@ def findings_for(c, scan):
             if v not in f["fixedIn"]:
                 f["fixedIn"].append(v)
     for f in by_id.values():
-        f["page"] = f["exposure"] == "public" and (
-            f["severity"] == "Critical" or f["kev"]
-        )
+        public = f["exposure"] == "public"
+        # Critical alone is too common to page on (Debian and Alpine carry
+        # many with no fix); those wait for the summary
+        f["page"] = public and f["kev"]
+        f["notable"] = public and (f["kev"] or f["severity"] == "Critical")
     return list(by_id.values())
 
 
@@ -241,7 +243,14 @@ def self_test():
 
 
 def rank(f):
-    return (not f["page"], SEVERITIES.index(f["severity"]), not f["kev"], f["key"])
+    # Pages first, then by severity, with what can be patched now leading
+    return (
+        not f["page"],
+        SEVERITIES.index(f["severity"]),
+        not f["kev"],
+        not f["fixedIn"],
+        f["key"],
+    )
 
 
 def describe(f):
@@ -355,13 +364,17 @@ def scan():
         # First run: one message for what's already there, not a flood
         state = {"seen": {}, "resolved": {}, "lastSummary": now()}
         paging = [f for f in findings if f["page"]]
-        post(
-            message(
+        if paging:
+            title = (
                 f"**Vulnerability scanning is live.** {len(paging)} findings on "
-                f"public services are Critical or known exploited:",
-                [describe(f) for f in paging],
+                f"public services are known exploited:"
             )
-        )
+        else:
+            title = (
+                "**Vulnerability scanning is live.** Nothing on public services "
+                "is known exploited; Criticals are in the daily summary."
+            )
+        post(message(title, [describe(f) for f in paging]))
     else:
         new = [f for f in findings if f["page"] and f["key"] not in state["seen"]]
         if new:
@@ -398,15 +411,17 @@ def summary():
     new = [f for f in findings if state["seen"].get(f["key"], "") > since]
     resolved = [k for k, t in state["resolved"].items() if t > since]
     paging = [f for f in findings if f["page"]]
+    critical = [f for f in findings if f["notable"] and not f["page"]]
     footer_bits = [f"{len(resolved)} resolved since the last summary"]
     if report["unscanned"]:
         footer_bits.append("not scanned: " + ", ".join(report["unscanned"]))
     title = (
         f"**Daily vulnerability summary** ({'; '.join(totals) or 'no findings'})\n"
-        f"{len(paging)} paging on public services, {len(new)} new since the last summary"
+        f"On public services: {len(paging)} known exploited, {len(critical)} other Critical. "
+        f"{len(new)} new since the last summary"
     )
-    lines = [describe(f) for f in paging] + [
-        describe(f) for f in new if not f["page"]
+    lines = [describe(f) for f in paging + critical] + [
+        describe(f) for f in new if not f["notable"]
     ]
     post(message(title, lines, "; ".join(footer_bits)))
     state["lastSummary"] = now()
