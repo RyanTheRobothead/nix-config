@@ -333,6 +333,12 @@
       "$HOME/.local/share/flatpak/exports/share"
       "$XDG_DATA_DIRS"
     ];
+    # nixpkgs' certifi ships plain pkgs.cacert, not the bundle security.pki
+    # filters (eMudhra, CVE-2026-111943), and reads this variable instead
+    # when it's set. Overriding certifi would rebuild every Python package.
+    NIX_SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
   };
+  # The same for system services, which don't get session variables
+  systemd.globalEnvironment.NIX_SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
 
 }

@@ -326,8 +326,14 @@ def components(sbom):
 
 
 def host_bundles():
-    """This host's CA bundles: the system one and any certifi in the closure."""
+    """This host's CA bundles: the system one and any certifi in the closure.
+
+    nixpkgs' certifi uses NIX_SSL_CERT_FILE over its own cacert.pem when set;
+    this unit gets the same environment as other services, so follow suit.
+    """
     paths = ["/etc/ssl/certs/ca-certificates.crt"]
+    if os.environ.get("NIX_SSL_CERT_FILE"):
+        return {p: pem_fingerprints(Path(p).read_text()) for p in {paths[0], os.environ["NIX_SSL_CERT_FILE"]}}
     closure = subprocess.run(
         ["nix-store", "-qR", os.path.realpath(SYSTEM)],
         check=True,
