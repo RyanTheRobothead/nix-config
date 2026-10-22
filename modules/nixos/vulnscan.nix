@@ -108,6 +108,8 @@ in
     group = "vulnscan";
   };
   users.groups.vulnscan = { };
+  # Read the reports and inventories without sudo
+  users.users.luckierdodge.extraGroups = [ "vulnscan" ];
 
   environment.systemPackages = [ inventory ];
   environment.etc."vulnscan/exposure.json".text = builtins.toJSON (
