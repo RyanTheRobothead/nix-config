@@ -11,16 +11,26 @@ packages carry it. A finding pages when its container is public and it is in
 CISA's Known Exploited Vulnerabilities catalog. The daily summary lists those
 and every Critical on a public service, then anything else new.
 
+Trust: every CA bundle in every image (captured by Syft alongside the SBOM)
+and on this host is checked against security/ca-denylist.toml, as are the
+runtimes that carry their own trust decisions. New trust findings post once.
+Fix watches (security/fix-watch.toml) post when a fix appears and again when
+every watched container runs it.
+
 Paths and the webhook come from VULNSCAN_* env vars set by the NixOS module.
 """
 
+import base64
+import hashlib
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,6 +38,11 @@ from pathlib import Path
 STATE = Path(os.environ.get("VULNSCAN_STATE", "/var/lib/vulnscan"))
 SPOOL = Path(os.environ.get("VULNSCAN_SPOOL", "/var/cache/vulnscan/images"))
 FIXTURE = os.environ.get("VULNSCAN_KEV_FIXTURE")
+TRUST_FIXTURE = os.environ.get("VULNSCAN_TRUST_FIXTURE")
+# Makes Syft capture CA bundle contents alongside each SBOM
+SYFT_CONFIG = os.environ.get("VULNSCAN_SYFT_CONFIG")
+CA_DENYLIST = os.environ.get("VULNSCAN_CA_DENYLIST")
+FIX_WATCH = os.environ.get("VULNSCAN_FIX_WATCH")
 WEBHOOK_FILE = os.environ.get("VULNSCAN_WEBHOOK_FILE")
 # Write Discord messages to this file instead of posting them
 DRY_RUN = os.environ.get("VULNSCAN_DISCORD_DRY_RUN")
@@ -100,19 +115,48 @@ def image_source(c):
     return None
 
 
-def syft(source, out):
-    tmp = out.with_name(f".{out.name}.part")
-    # Not -q: that hides the reason when a pull fails
-    run = subprocess.run(
-        ["syft", source, "-o", f"cyclonedx-json={tmp}"],
-        capture_output=True,
-        text=True,
-        env=TOOL_ENV,
+def pem_fingerprints(text):
+    """SHA-256 of each certificate's DER in a PEM bundle."""
+    blocks = re.findall(
+        r"-----BEGIN (?:TRUSTED )?CERTIFICATE-----(.*?)-----END (?:TRUSTED )?CERTIFICATE-----",
+        text,
+        re.S,
     )
+    return sorted({hashlib.sha256(base64.b64decode("".join(b.split()))).hexdigest() for b in blocks})
+
+
+def sbom_path(hexd):
+    return SBOMS / f"{hexd}.cdx.json"
+
+
+def cas_path(hexd):
+    """The image's CA bundles: {path: [fingerprints]}."""
+    return SBOMS / f"{hexd}.cas.json"
+
+
+def syft(source, hexd):
+    """SBOM an image, keeping only the fingerprints of its CA bundles."""
+    out = sbom_path(hexd)
+    tmp = out.with_name(f".{out.name}.part")
+    files = out.with_name(f".{hexd}.syft.json.part")
+    cmd = ["syft", source, "-o", f"cyclonedx-json={tmp}"]
+    if SYFT_CONFIG:
+        cmd += ["-c", SYFT_CONFIG, "-o", f"syft-json={files}"]
+    # Not -q: that hides the reason when a pull fails
+    run = subprocess.run(cmd, capture_output=True, text=True, env=TOOL_ENV)
     if run.returncode != 0:
         tmp.unlink(missing_ok=True)
+        files.unlink(missing_ok=True)
         reason = " | ".join(run.stderr.strip().splitlines()[-3:])
         raise RuntimeError(f"syft exited {run.returncode}: {reason}")
+    if SYFT_CONFIG:
+        bundles = {}
+        for f in json.loads(files.read_text()).get("files", []):
+            if f.get("contents"):
+                pem = base64.b64decode(f["contents"]).decode(errors="replace")
+                bundles[f["location"]["path"]] = pem_fingerprints(pem)
+        files.unlink()
+        write_json(cas_path(hexd), {"bundles": bundles})
     os.replace(tmp, out)
 
 
@@ -123,8 +167,7 @@ def update_sboms(cs):
     for c in cs:
         wanted.setdefault(c["digest"].removeprefix("sha256:"), c)
     for hexd, c in sorted(wanted.items()):
-        out = SBOMS / f"{hexd}.cdx.json"
-        if out.exists():
+        if sbom_path(hexd).exists() and (not SYFT_CONFIG or cas_path(hexd).exists()):
             continue
         source = image_source(c)
         if source is None:
@@ -132,11 +175,12 @@ def update_sboms(cs):
             continue
         log(f"sbom {c['host']}/{c['name']} from {source}")
         try:
-            syft(source, out)
+            syft(source, hexd)
         except RuntimeError as e:
             # One unreadable image shouldn't stop the rest being scanned
             log(f"warning: syft failed for {c['host']}/{c['name']}: {e}")
-    for f in list(SBOMS.glob("*.cdx.json")) + list(RESULTS.glob("*.json")):
+    stale = list(SBOMS.glob("*.cdx.json")) + list(SBOMS.glob("*.cas.json"))
+    for f in stale + list(RESULTS.glob("*.json")):
         hexd = f.name.split(".")[0]
         if not hexd.startswith("host-") and hexd not in wanted:
             log(f"removing {f.relative_to(STATE)}")
@@ -248,6 +292,218 @@ def self_test():
         )
 
 
+def load_toml(path):
+    if not path:
+        return {}
+    with open(path, "rb") as f:
+        return tomllib.load(f)
+
+
+def version_key(v):
+    """Digits in order: go1.27.2 -> (1, 27, 2); 8.5.11-r1 -> (8, 5, 11, 1)."""
+    return tuple(int(x) for x in re.findall(r"\d+", v.removeprefix("go")))
+
+
+def runtime_fix(version, rt):
+    """(passes, the fix on its line or None) under the denylist's line rule."""
+    v = version_key(version)
+    line = rt["line"]
+    fixes = sorted(version_key(f) for f in rt["fixed"])
+    same = [f for f in fixes if f[:line] == v[:line]]
+    if same:
+        return v >= same[0], ".".join(map(str, same[0]))
+    return v[:line] > max(f[:line] for f in fixes), None
+
+
+def components(sbom):
+    """(purl without version, version) for every component in a CycloneDX SBOM."""
+    out = []
+    for comp in read_json(sbom, {}).get("components", []):
+        purl = comp.get("purl", "")
+        if "@" in purl and comp.get("version"):
+            out.append((purl.split("@")[0], comp["version"]))
+    return out
+
+
+def host_bundles():
+    """This host's CA bundles: the system one and any certifi in the closure.
+
+    nixpkgs' certifi uses NIX_SSL_CERT_FILE over its own cacert.pem when set;
+    this unit gets the same environment as other services, so follow suit.
+    """
+    paths = ["/etc/ssl/certs/ca-certificates.crt"]
+    if os.environ.get("NIX_SSL_CERT_FILE"):
+        return {p: pem_fingerprints(Path(p).read_text()) for p in {paths[0], os.environ["NIX_SSL_CERT_FILE"]}}
+    closure = subprocess.run(
+        ["nix-store", "-qR", os.path.realpath(SYSTEM)],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.split()
+    for store_path in closure:
+        if "certifi" in store_path:
+            paths += [str(p) for p in Path(store_path).glob("lib/*/site-packages/certifi/cacert.pem")]
+    return {p: pem_fingerprints(Path(p).read_text()) for p in paths if os.path.exists(p)}
+
+
+def trust_findings(denylist, where, exposure, bundles, comps):
+    """One finding per distrusted certificate or unfixed runtime in one place."""
+    out = []
+    for cert in denylist.get("certificate", []):
+        paths = sorted(p for p, fps in bundles.items() if cert["sha256"] in fps)
+        if paths:
+            out.append(
+                {
+                    "key": f"{where}/trust/{cert['name']}",
+                    "where": where,
+                    "exposure": exposure,
+                    "kind": "certificate",
+                    "name": cert["name"],
+                    "paths": paths,
+                    "why": cert["why"],
+                }
+            )
+    for rt in denylist.get("runtime", []):
+        bad = []
+        for purl, version in comps:
+            if purl in rt["purls"]:
+                ok, fix = runtime_fix(version, rt)
+                if not ok and version not in [b[0] for b in bad]:
+                    bad.append((version, fix))
+        if bad:
+            out.append(
+                {
+                    "key": f"{where}/trust/{rt['name']}",
+                    "where": where,
+                    "exposure": exposure,
+                    "kind": "runtime",
+                    "name": rt["name"],
+                    "versions": [{"version": v, "fixedIn": f} for v, f in bad],
+                    "why": rt["why"],
+                }
+            )
+    return out
+
+
+def check_trust(cs):
+    """Trust findings for every container and this host, and what went unchecked."""
+    denylist = load_toml(CA_DENYLIST)
+    if not denylist:
+        return [], []
+    found, unchecked = [], []
+    for c in cs:
+        where = f"{c['host']}/{c['name']}"
+        hexd = c["digest"].removeprefix("sha256:")
+        cas = read_json(cas_path(hexd))
+        if cas is None or not sbom_path(hexd).exists():
+            # Not checked is not clean
+            unchecked.append(where)
+            continue
+        found += trust_findings(
+            denylist, where, c["exposure"], cas["bundles"], components(sbom_path(hexd))
+        )
+    host_sbom = SBOMS / f"host-{HOST}.cdx.json"
+    found += trust_findings(
+        denylist, f"{HOST}/(system)", "host", host_bundles(), components(host_sbom)
+    )
+    return found, unchecked
+
+
+def check_watches(cs, scans):
+    """Each fix watch's state in every container it names."""
+    out = []
+    for w in load_toml(FIX_WATCH).get("watch", []):
+        status = {"name": w["name"], "then": w["then"], "containers": []}
+        for where in w["containers"]:
+            host, name = where.split("/", 1)
+            c = next((c for c in cs if c["host"] == host and c["name"] == name), None)
+            entry = {"where": where, "state": "unchecked", "versions": []}
+            if c is not None:
+                hexd = c["digest"].removeprefix("sha256:")
+                comps = components(sbom_path(hexd)) if sbom_path(hexd).exists() else None
+                if comps is not None:
+                    entry["versions"] = sorted({v for p, v in comps if p in w["purls"]})
+                    # A distro may backport the fix without the upstream
+                    # release: trust Grype's fixed version when it has one
+                    learned = sorted(
+                        (
+                            fv
+                            for m in scans.get(hexd, {}).get("matches", [])
+                            if cve_id(m) in w["cves"]
+                            for fv in m["vulnerability"].get("fix", {}).get("versions", [])
+                        ),
+                        key=version_key,
+                    )
+                    entry["threshold"] = learned[0] if learned else w["fixed"]
+                    entry["learned"] = bool(learned)
+                    fixed = all(
+                        version_key(v) >= version_key(entry["threshold"])
+                        for v in entry["versions"]
+                    )
+                    # No such package any more counts as fixed
+                    entry["state"] = "fixed" if fixed else "waiting"
+            status["containers"].append(entry)
+        states = [e["state"] for e in status["containers"]]
+        status["done"] = all(s == "fixed" for s in states)
+        status["fixKnown"] = any(e.get("learned") for e in status["containers"])
+        out.append(status)
+    return out
+
+
+def trust_self_test():
+    """Fail loudly if a planted emSign G3 certificate isn't caught."""
+    if not TRUST_FIXTURE:
+        return
+    bundles = {TRUST_FIXTURE: pem_fingerprints(Path(TRUST_FIXTURE).read_text())}
+    hits = trust_findings(load_toml(CA_DENYLIST), "self-test", "local", bundles, [])
+    if not any(h["name"] == "emSign ECC Root CA - G3" for h in hits):
+        raise SystemExit("self-test: the planted emSign G3 certificate wasn't flagged")
+
+
+def describe_trust(group):
+    """One line per place: everything it trusts that it shouldn't."""
+    where = group[0]["where"]
+    bits = []
+    certs = [t for t in group if t["kind"] == "certificate"]
+    if certs:
+        paths = sorted({p for t in certs for p in t["paths"]})
+        shown = ", ".join(paths[:2]) + (f" +{len(paths) - 2}" if len(paths) > 2 else "")
+        bits.append(f"trusts {', '.join(t['name'] for t in certs)} ({shown})")
+    for t in group:
+        if t["kind"] == "runtime":
+            for v in t["versions"]:
+                fix = (
+                    f"fixed in {v['fixedIn']}"
+                    if v["fixedIn"]
+                    else "no fix on this release line"
+                )
+                bits.append(f"{t['name']} {v['version'].removeprefix('go')}: {fix}")
+    return f"{where}: " + "; ".join(bits)
+
+
+def trust_lines(trust):
+    groups = {}
+    for t in trust:
+        groups.setdefault(t["where"], []).append(t)
+    # Public services first
+    order = {"public": 0, "host": 1, "tailnet": 2, "local": 3}
+    return [
+        describe_trust(g)
+        for _, g in sorted(groups.items(), key=lambda kv: (order.get(kv[1][0]["exposure"], 9), kv[0]))
+    ]
+
+
+def describe_watch(w):
+    parts = []
+    for e in w["containers"]:
+        versions = ", ".join(e["versions"]) or "not present"
+        if e["state"] == "unchecked":
+            parts.append(f"{e['where']} not checked")
+        else:
+            parts.append(f"{e['where']} {versions} (needs {e['threshold']})")
+    return f"{w['name']}: " + "; ".join(parts)
+
+
 def rank(f):
     # Pages first, then by severity, with what can be patched now leading
     return (
@@ -319,6 +575,12 @@ def write_metrics(report):
             f'vulnscan_findings{{host="{host}",exposure="{exposure}",severity="{sev}"}} {n}'
         )
     lines += [
+        "# HELP vulnscan_trust_findings Places trusting a distrusted root or running an unfixed runtime",
+        "# TYPE vulnscan_trust_findings gauge",
+        f"vulnscan_trust_findings {len({t['where'] for t in report['trust']})}",
+        "# HELP vulnscan_fix_watch_waiting Fix watches still waiting for a fixed image",
+        "# TYPE vulnscan_fix_watch_waiting gauge",
+        f"vulnscan_fix_watch_waiting {sum(not w['done'] for w in report['watches'])}",
         "# HELP vulnscan_last_scan_timestamp_seconds When the last scan finished",
         "# TYPE vulnscan_last_scan_timestamp_seconds gauge",
         f"vulnscan_last_scan_timestamp_seconds {int(time.time())}",
@@ -336,6 +598,7 @@ def scan():
     update_host_sbom()
     subprocess.run(["grype", "-q", "db", "update"], check=True, env=TOOL_ENV)
     self_test()
+    trust_self_test()
 
     RESULTS.mkdir(parents=True, exist_ok=True)
     scans = {}
@@ -356,10 +619,16 @@ def scan():
         if not (SBOMS / f"{c['digest'].removeprefix('sha256:')}.cdx.json").exists()
     )
 
+    trust, unchecked = check_trust(cs)
+    watches = check_watches(cs, scans)
+
     report = {
         "generated": now(),
         "unscanned": unscanned,
         "findings": findings,
+        "trust": trust,
+        "trustUnchecked": unchecked,
+        "watches": watches,
     }
     write_json(REPORT, report)
     write_metrics(report)
@@ -390,6 +659,8 @@ def scan():
                     [describe(f) for f in new],
                 )
             )
+    alert_trust(state, trust)
+    alert_watches(state, watches)
     for key in set(state["seen"]) - set(current):
         state["resolved"][key] = now()
         del state["seen"][key]
@@ -398,6 +669,47 @@ def scan():
         state["resolved"].pop(key, None)
     write_json(ALERTS, state)
     log(f"{len(findings)} findings, {sum(f['page'] for f in findings)} paging")
+
+
+def alert_trust(state, trust):
+    seen = state.get("trustSeen")
+    if seen is None:
+        # First trust check: one message for what's already there
+        seen = {}
+        if trust:
+            title = (
+                f"**Trust-store check is live.** {len({t['where'] for t in trust})} "
+                "places trust distrusted roots or run a runtime without the fix:"
+            )
+        else:
+            title = "**Trust-store check is live.** Nothing trusts a distrusted root."
+        post(message(title, trust_lines(trust)))
+    else:
+        new = [t for t in trust if t["key"] not in seen]
+        if new:
+            post(message(f"**{len(new)} new trust findings**", trust_lines(new)))
+    state["trustSeen"] = {t["key"]: seen.get(t["key"], now()) for t in trust}
+
+
+def alert_watches(state, watches):
+    prev = state.setdefault("watches", {})
+    for w in watches:
+        was = prev.get(w["name"], {})
+        if w["done"] and not was.get("done"):
+            post(
+                message(
+                    f"**{w['name']} is fixed** in every watched container. Now: {w['then']}",
+                    [describe_watch(w)],
+                )
+            )
+        elif w["fixKnown"] and not was.get("fixKnown"):
+            post(
+                message(
+                    f"**{w['name']}: a fix exists.** Waiting for the images to update.",
+                    [describe_watch(w)],
+                )
+            )
+        prev[w["name"]] = {"done": w["done"], "fixKnown": w["fixKnown"]}
 
 
 def summary():
@@ -421,15 +733,26 @@ def summary():
     footer_bits = [f"{len(resolved)} resolved since the last summary"]
     if report["unscanned"]:
         footer_bits.append("not scanned: " + ", ".join(report["unscanned"]))
+    trust = report.get("trust", [])
+    unchecked = report.get("trustUnchecked", [])
+    waiting = [w for w in report.get("watches", []) if not w["done"]]
     title = (
         f"**Daily vulnerability summary** ({'; '.join(totals) or 'no findings'})\n"
         f"On public services: {len(paging)} known exploited, {len(critical)} other Critical. "
-        f"{len(new)} new since the last summary"
+        f"{len(new)} new since the last summary. "
+        f"Trust: {len({t['where'] for t in trust})} places flagged, {len(unchecked)} unchecked; "
+        f"{len(waiting)} fix watches waiting"
     )
     lines = [describe(f) for f in paging + critical] + [
         describe(f) for f in new if not f["notable"]
     ]
     post(message(title, lines, "; ".join(footer_bits)))
+    # Its own message, so the Critical list can't push it off the end
+    if trust or unchecked or waiting:
+        detail = [describe_watch(w) for w in waiting] + trust_lines(trust)
+        if unchecked:
+            detail.append("trust not checked: " + ", ".join(unchecked))
+        post(message("**Trust and fix watches**", detail))
     state["lastSummary"] = now()
     state["resolved"] = {}
     write_json(ALERTS, state)

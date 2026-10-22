@@ -12,6 +12,11 @@
 # metric. New known-exploited findings on public services page Discord at
 # once; the daily summary lists those and public Criticals, then anything else
 # new; and any vulnscan unit failing says so there too.
+#
+# Trust: every CA bundle Syft finds in an image, and the host's, is checked
+# against security/ca-denylist.toml along with the runtimes that carry their
+# own roots; security/fix-watch.toml says when a fix lands for something that
+# had none. Both report through the same scan.
 {
   config,
   lib,
@@ -57,10 +62,30 @@ let
     flakeIgnore = [ "E501" ];
   } (builtins.readFile ./vulnscan-scan.py);
 
+  # Syft captures these files' contents with each SBOM, for the trust check
+  syftConfig = pkgs.writeText "vulnscan-syft.json" (
+    builtins.toJSON {
+      file.content = {
+        globs = [
+          "**/ca-certificates.crt"
+          "**/ca-bundle.crt"
+          "**/tls-ca-bundle.pem"
+          "**/cert.pem"
+          "**/cacert.pem"
+        ];
+        skip-files-above-size = 4194304;
+      };
+    }
+  );
+
   # Shared by the scan, summary and failure units
   scanEnvironment = {
     VULNSCAN_HOST = "aegis";
     VULNSCAN_KEV_FIXTURE = "${../../security/testdata/log4j-kev.cdx.json}";
+    VULNSCAN_TRUST_FIXTURE = "${../../security/testdata/emsign-g3.pem}";
+    VULNSCAN_SYFT_CONFIG = "${syftConfig}";
+    VULNSCAN_CA_DENYLIST = "${../../security/ca-denylist.toml}";
+    VULNSCAN_FIX_WATCH = "${../../security/fix-watch.toml}";
     VULNSCAN_WEBHOOK_FILE = "%d/discord-webhook";
     GRYPE_DB_CACHE_DIR = "/var/cache/vulnscan/grype";
     # Syft unpacks whole images here; immich's are several GB
