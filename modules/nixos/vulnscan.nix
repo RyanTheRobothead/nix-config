@@ -5,6 +5,13 @@
 # also saved into a spool for the scanners. Refreshed daily and whenever a
 # container starts on Aegis. Cerberus is read over SSH with a key that can do
 # nothing but run the inventory command.
+#
+# Scan: Syft SBOMs each new digest (Aegis's from the spool, Cerberus's from
+# its registry) and sbomnix the system after each switch; Grype rescans every
+# SBOM every 6 hours. Results land in report/report.json and a textfile
+# metric. New Critical or known-exploited findings on public services page
+# Discord at once, everything else goes in the daily summary, and any vulnscan
+# unit failing says so there too.
 {
   config,
   lib,
@@ -43,6 +50,45 @@ let
       INVENTORY_CMD=${lib.escapeShellArg inventoryCommand}
     ''
     + builtins.readFile ./vulnscan-inventory.sh;
+  };
+
+  scanner = pkgs.writers.writePython3Bin "vulnscan-scan" {
+    # Line length is left to the formatter's judgement
+    flakeIgnore = [ "E501" ];
+  } (builtins.readFile ./vulnscan-scan.py);
+
+  # Shared by the scan, summary and failure units
+  scanEnvironment = {
+    VULNSCAN_HOST = "aegis";
+    VULNSCAN_KEV_FIXTURE = "${../../security/testdata/log4j-kev.cdx.json}";
+    VULNSCAN_WEBHOOK_FILE = "%d/discord-webhook";
+    GRYPE_DB_CACHE_DIR = "/var/cache/vulnscan/grype";
+    # Syft unpacks whole images here; immich's are several GB
+    TMPDIR = "/var/cache/vulnscan/tmp";
+  };
+
+  scanHardening = {
+    User = "vulnscan";
+    Group = "vulnscan";
+    LoadCredential = "discord-webhook:${config.sops.secrets.vulnscan_discord_webhook.path}";
+    CapabilityBoundingSet = [ "" ];
+    NoNewPrivileges = true;
+    PrivateDevices = true;
+    PrivateTmp = true;
+    ProtectHome = true;
+    ProtectSystem = "strict";
+    ReadWritePaths = [
+      "/var/lib/vulnscan"
+      "/var/cache/vulnscan"
+    ];
+    RestrictAddressFamilies = [
+      "AF_INET"
+      "AF_INET6"
+      # The nix daemon, for sbomnix
+      "AF_UNIX"
+    ];
+    SystemCallArchitectures = "native";
+    UMask = "0027";
   };
 
   # Aegis's tailnet addresses, the only place the Cerberus key is accepted from
@@ -84,11 +130,23 @@ in
     # Outside restic's paths: the images are re-saved from Docker if lost
     "d /var/cache/vulnscan 0750 root vulnscan -"
     "d /var/cache/vulnscan/images 0750 root vulnscan -"
+    # The scanners' own: root never writes here
+    "d /var/lib/vulnscan/sbom 0750 vulnscan vulnscan -"
+    "d /var/lib/vulnscan/results 0750 vulnscan vulnscan -"
+    "d /var/lib/vulnscan/report 0750 vulnscan vulnscan -"
+    "d /var/lib/vulnscan/metrics 0750 vulnscan vulnscan -"
+    "d /var/cache/vulnscan/grype 0750 vulnscan vulnscan -"
+    "d /var/cache/vulnscan/tmp 0750 vulnscan vulnscan -"
   ];
 
   sops.secrets.vulnscan_cerberus_ssh_key = {
     format = "yaml";
     sopsFile = ../../secrets/vulnscan.yaml;
+  };
+  # Gatus's alert webhook, shared
+  sops.secrets.vulnscan_discord_webhook = {
+    format = "yaml";
+    sopsFile = ../../secrets/vulnscan-discord.yaml;
   };
 
   programs.ssh.knownHosts.cerberus = {
@@ -102,6 +160,7 @@ in
   # Root, for the Docker socket; the scanners themselves never touch it
   systemd.services.vulnscan-inventory = {
     description = "Inventory Aegis's container images for vulnerability scanning";
+    onFailure = [ "vulnscan-notify-failure@%n.service" ];
     requires = [ "docker.service" ];
     after = [ "docker.service" ];
     startAt = "daily";
@@ -118,6 +177,7 @@ in
 
   systemd.services.vulnscan-inventory-cerberus = {
     description = "Inventory Cerberus's container images for vulnerability scanning";
+    onFailure = [ "vulnscan-notify-failure@%n.service" ];
     wants = [ "network-online.target" ];
     after = [
       "network-online.target"
@@ -151,6 +211,63 @@ in
 
   systemd.timers.vulnscan-inventory.timerConfig.Persistent = true;
   systemd.timers.vulnscan-inventory-cerberus.timerConfig.Persistent = true;
+
+  systemd.services.vulnscan-scan = {
+    description = "SBOM and rescan every image in use for vulnerabilities";
+    onFailure = [ "vulnscan-notify-failure@%n.service" ];
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    startAt = "*-*-* 00/6:00:00";
+    path = [
+      pkgs.syft
+      pkgs.grype
+      pkgs.sbomnix
+      config.nix.package
+    ];
+    environment = scanEnvironment;
+    serviceConfig = scanHardening // {
+      Type = "oneshot";
+      ExecStart = "${lib.getExe scanner} scan";
+      Nice = 19;
+      IOSchedulingClass = "idle";
+    };
+  };
+  systemd.timers.vulnscan-scan.timerConfig.Persistent = true;
+
+  # New inventories mean new digests to SBOM; a new system means a new
+  # closure SBOM. The 6-hourly timer catches anything these miss.
+  systemd.paths.vulnscan-scan = {
+    wantedBy = [ "paths.target" ];
+    pathConfig.PathChanged = [
+      "/var/lib/vulnscan/inventory"
+      "/run/current-system"
+    ];
+  };
+
+  systemd.services.vulnscan-summary = {
+    description = "Post the daily vulnerability summary";
+    onFailure = [ "vulnscan-notify-failure@%n.service" ];
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    startAt = "*-*-* 08:00:00";
+    environment = scanEnvironment;
+    serviceConfig = scanHardening // {
+      Type = "oneshot";
+      ExecStart = "${lib.getExe scanner} summary";
+    };
+  };
+  systemd.timers.vulnscan-summary.timerConfig.Persistent = true;
+
+  systemd.services."vulnscan-notify-failure@" = {
+    description = "Report that %i failed";
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    environment = scanEnvironment;
+    serviceConfig = scanHardening // {
+      Type = "oneshot";
+      ExecStart = "${lib.getExe scanner} notify-failure %i";
+    };
+  };
 
   # Compose deploys aren't switches, so watch for containers starting instead.
   # Inventory once at startup to catch anything started while this was down.
