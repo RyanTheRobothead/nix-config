@@ -3,6 +3,7 @@
   vulnscan-scan scan              SBOM new digests, rescan everything, alert
   vulnscan-scan summary           post the daily summary
   vulnscan-scan notify-failure U  post that unit U failed
+  vulnscan-scan nix-trial         run both Nix closure scanners, record results
 
 Reads the inventories vulnscan-inventory writes. Image SBOMs come from the
 saved archive for this host's images and from the registry, by digest, for
@@ -21,6 +22,7 @@ Paths and the webhook come from VULNSCAN_* env vars set by the NixOS module.
 """
 
 import base64
+import csv
 import hashlib
 import json
 import os
@@ -758,6 +760,79 @@ def summary():
     write_json(ALERTS, state)
 
 
+TRIAL = STATE / "trial"
+TRIAL_DAYS = 45
+
+
+def nix_trial():
+    """Scan the system closure with vulnix and with vulnxscan, and keep both.
+
+    A month of these decides which scanner stays (Phase 6): fewer false
+    alarms wins, and a scanner that can't fetch its data counts against it.
+    Nothing alerts; a run that fails is recorded, not raised.
+    """
+    system = os.path.realpath(SYSTEM)
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    out = TRIAL / day
+    out.mkdir(parents=True, exist_ok=True)
+    row = {"date": day, "system": system}
+
+    # vulnix fetches NVD's yearly feeds, which time out often: try twice.
+    # Exit 0 is clean, 2 is vulnerabilities found, anything else an error.
+    for attempt in (1, 2):
+        run = subprocess.run(
+            ["vulnix", "--json", system], capture_output=True, text=True
+        )
+        if run.returncode in (0, 2):
+            break
+    if run.returncode in (0, 2):
+        found = json.loads(run.stdout or "[]")
+        (out / "vulnix.json").write_text(run.stdout)
+        row["vulnix"] = {
+            "ok": True,
+            "attempts": attempt,
+            "findings": sum(len(d.get("affected_by", [])) for d in found),
+        }
+    else:
+        (out / "vulnix.err").write_text(run.stderr[-20000:])
+        reason = (run.stderr.strip().splitlines() or ["no output"])[-1]
+        row["vulnix"] = {"ok": False, "attempts": attempt, "error": reason[:300]}
+
+    # vulnxscan runs vulnix, Grype and OSV and merges them; it carries on
+    # without any that fail, so record which ones made it into the table
+    with tempfile.TemporaryDirectory(dir=out) as tmp:
+        run = subprocess.run(
+            ["vulnxscan", system, "--out", f"{tmp}/vulns.csv"],
+            capture_output=True,
+            text=True,
+            cwd=tmp,
+        )
+        if run.returncode == 0 and os.path.exists(f"{tmp}/vulns.csv"):
+            os.replace(f"{tmp}/vulns.csv", out / "vulnxscan.csv")
+            with open(out / "vulnxscan.csv", newline="") as f:
+                rows = list(csv.DictReader(f))
+            scanners = [k for k in ("vulnix", "grype", "osv") if rows and k in rows[0]]
+            row["vulnxscan"] = {
+                "ok": True,
+                "findings": len(rows),
+                "scanners": scanners,
+                "by": {k: sum(r.get(k) == "1" for r in rows) for k in scanners},
+            }
+        else:
+            (out / "vulnxscan.err").write_text(run.stderr[-20000:])
+            row["vulnxscan"] = {"ok": False, "error": (run.stderr.strip().splitlines() or ["no output"])[-1][:300]}
+
+    with open(TRIAL / "summary.jsonl", "a") as f:
+        f.write(json.dumps(row, sort_keys=True) + "\n")
+    cutoff = time.time() - TRIAL_DAYS * 86400
+    for d in TRIAL.iterdir():
+        if d.is_dir() and d.stat().st_mtime < cutoff:
+            for f in d.iterdir():
+                f.unlink()
+            d.rmdir()
+    log(json.dumps(row))
+
+
 def notify_failure(unit):
     post(f"**vulnscan:** `{unit}` failed on {HOST}; see `journalctl -u {unit}`")
 
@@ -769,6 +844,8 @@ def main():
         summary()
     elif len(sys.argv) == 3 and sys.argv[1] == "notify-failure":
         notify_failure(sys.argv[2])
+    elif len(sys.argv) == 2 and sys.argv[1] == "nix-trial":
+        nix_trial()
     else:
         raise SystemExit(__doc__)
 

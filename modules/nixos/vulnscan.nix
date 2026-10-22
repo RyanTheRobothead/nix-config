@@ -164,6 +164,9 @@ in
     "d /var/lib/vulnscan/metrics 0750 vulnscan vulnscan -"
     "d /var/cache/vulnscan/grype 0750 vulnscan vulnscan -"
     "d /var/cache/vulnscan/tmp 0750 vulnscan vulnscan -"
+    "d /var/lib/vulnscan/trial 0750 vulnscan vulnscan -"
+    # vulnix keeps its NVD data under $HOME/.cache
+    "d /var/cache/vulnscan/home 0750 vulnscan vulnscan -"
   ];
 
   sops.secrets.vulnscan_cerberus_ssh_key = {
@@ -282,6 +285,37 @@ in
     };
   };
   systemd.timers.vulnscan-summary.timerConfig.Persistent = true;
+
+  # Which Nix closure scanner to keep: vulnix alone, or vulnxscan (vulnix,
+  # Grype and OSV merged). A month of daily runs in trial/, then decide.
+  systemd.services.vulnscan-nix-trial = {
+    description = "Scan the system closure with vulnix and vulnxscan, for comparison";
+    onFailure = [ "vulnscan-notify-failure@%n.service" ];
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    startAt = "*-*-* 03:00:00";
+    path = [
+      pkgs.vulnix
+      pkgs.sbomnix
+      pkgs.grype
+      config.nix.package
+    ];
+    environment = scanEnvironment // {
+      HOME = "/var/cache/vulnscan/home";
+      # The scan unit keeps Grype's database current
+      GRYPE_DB_AUTO_UPDATE = "false";
+      GRYPE_CHECK_FOR_APP_UPDATE = "false";
+    };
+    serviceConfig = scanHardening // {
+      Type = "oneshot";
+      ExecStart = "${lib.getExe scanner} nix-trial";
+      Nice = 19;
+      IOSchedulingClass = "idle";
+      # NVD's feeds can crawl
+      TimeoutStartSec = "3h";
+    };
+  };
+  systemd.timers.vulnscan-nix-trial.timerConfig.Persistent = true;
 
   systemd.services."vulnscan-notify-failure@" = {
     description = "Report that %i failed";
