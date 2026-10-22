@@ -1,0 +1,56 @@
+# Distrusted CA certificates, and runtimes that make their own trust
+# decisions (Phase 6 Stage A). vulnscan checks every CA bundle in every image
+# and on Aegis against [[certificate]], and each runtime's version against
+# [[runtime]]; any hit is a trust finding. The next CA incident is an entry
+# here.
+#
+# Bundles are found by path: the system bundle, and any certifi, pip or
+# botocore cacert.pem. Java keystores aren't read.
+
+# CVE-2026-111943: eMudhra intermediate keys compromised. nixpkgs distrusts
+# these four (nixos/modules/security/ca.nix); NSS 3.131.1 removes only G3 so
+# far, so certifi 2026.10.19 and Node's built-in store still carry C1 and C3.
+
+[[certificate]]
+name = "emSign ECC Root CA - G3"
+sha256 = "86a1ecba089c4a8d3bbe2734c612ba341d813e043cf9e8a862cd5c57a36bbe6b"
+why = "eMudhra key compromise, CVE-2026-111943"
+
+[[certificate]]
+name = "emSign Root CA - C1"
+sha256 = "125609aa301da0a249b97a8239cb6a34216f44dcac9f3954b14292f2e8c8608f"
+why = "eMudhra key compromise, CVE-2026-111943"
+
+[[certificate]]
+name = "emSign ECC Root CA - C3"
+sha256 = "bc4d809b15189d78db3e1d8cf4f9726a795da1643ca5f1358e1ddb0edc0d7eb3"
+why = "eMudhra key compromise, CVE-2026-111943"
+
+[[certificate]]
+# Mozilla's label; the certificate's own CN is "AAA Certificate Services"
+name = "Comodo AAA Services root"
+sha256 = "d7a7a0fb5d7e2731d771e9484ebcdef71d5f0c3e0a2948782bc83ee0ea699ef4"
+why = "cross-signs the compromised eMudhra intermediates, CVE-2026-111943"
+
+# A runtime passes when it is at or above the fix on its own release line
+# (`line` = how many version components name a line), or on a line newer than
+# every fix listed. An older line has no fix and relies on the image's bundle.
+
+[[runtime]]
+name = "Go"
+# Go's standard library is compiled in: this is the Go each binary was built
+# with. These releases drop chains through the eight compromised
+# intermediates whatever the roots (golang/go#82345).
+purls = ["pkg:golang/stdlib"]
+line = 2
+fixed = ["1.26.10", "1.27.3"]
+why = "no eMudhra intermediate block, CVE-2026-111943"
+
+[[runtime]]
+name = "Node.js"
+# Node's root store is compiled in. These releases move it to NSS 3.131.1,
+# which removes G3 only.
+purls = ["pkg:generic/node", "pkg:nix/nodejs"]
+line = 1
+fixed = ["22.23.4", "24.22.1", "26.12.1"]
+why = "built-in roots still trust emSign G3, CVE-2026-111943"
