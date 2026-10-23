@@ -105,6 +105,10 @@ def containers():
     return out
 
 
+def inventory_snapshot():
+    return {p.name: p.read_bytes() for p in INVENTORY.glob("*.json")}
+
+
 def image_source(c):
     """Where Syft reads this container's image from, or None."""
     hexd = c["digest"].removeprefix("sha256:")
@@ -839,7 +843,14 @@ def notify_failure(unit):
 
 def main():
     if len(sys.argv) == 2 and sys.argv[1] == "scan":
-        scan()
+        # An inventory written mid-scan fires the path unit while this is
+        # still running, and systemd drops that trigger; rescan instead
+        for _ in range(3):
+            before = inventory_snapshot()
+            scan()
+            if inventory_snapshot() == before:
+                break
+            log("inventory changed during the scan; rescanning")
     elif len(sys.argv) == 2 and sys.argv[1] == "summary":
         summary()
     elif len(sys.argv) == 3 and sys.argv[1] == "notify-failure":
