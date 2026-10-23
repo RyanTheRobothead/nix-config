@@ -716,6 +716,9 @@ def alert_watches(state, watches):
                 )
             )
         prev[w["name"]] = {"done": w["done"], "fixKnown": w["fixKnown"]}
+    # A watch removed from fix-watch.toml takes its state with it
+    for name in set(prev) - {w["name"] for w in watches}:
+        del prev[name]
 
 
 def summary():

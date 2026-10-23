@@ -18,7 +18,6 @@
       "immich_server"
       "jellyfin"
       "neofoundryvtt"
-      # Its proxy conf is disabled only until the PHP2Shell fix lands
       "nextcloud"
       # Published through gluetun's network namespace
       "ombi"
