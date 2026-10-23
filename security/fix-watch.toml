@@ -7,14 +7,12 @@
 # fixed version for a watched container, that version is the threshold
 # instead.
 
-[[watch]]
-name = "PHP2Shell"
-cves = ["CVE-2026-109618", "CVE-2026-109619"]
-purls = ["pkg:apk/alpine/php85"]
-containers = ["cerberus/swag", "aegis/nextcloud"]
-fixed = "8.5.12"
-then = """\
-Revert the PHP2Shell lockdown on Cerberus: rename \
-nginx/proxy-confs/nextcloud.subdomain.conf.disabled back, restore SWAG's \
-site-confs/default.conf from default.conf.bak-php2shell-20261021, and reload \
-SWAG. librespeed stays removed."""
+# No watches open. An entry looks like:
+#
+# [[watch]]
+# name = "PHP2Shell"
+# cves = ["CVE-2026-109618", "CVE-2026-109619"]
+# purls = ["pkg:apk/alpine/php85"]
+# containers = ["cerberus/swag", "aegis/nextcloud"]
+# fixed = "8.5.12"
+# then = "Revert the lockdown: ..."
