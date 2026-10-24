@@ -8,6 +8,7 @@
   ],
   "timezone": "America/Chicago",
   "dependencyDashboard": true,
+  "prHourlyLimit": 0,
   "nix": {
     "description": "Beta and opt-in; runs nix on Aegis to update flake.lock",
     "enabled": true
