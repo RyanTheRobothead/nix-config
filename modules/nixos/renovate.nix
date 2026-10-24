@@ -11,12 +11,21 @@
     format = "yaml";
     sopsFile = ../../secrets/renovate.yaml;
   };
+  # Classic PAT with only read:packages; ghcr.io rejects fine-grained tokens,
+  # and anonymous tag listings of large repos (Immich) get throttled
+  sops.secrets.renovate_ghcr_token = {
+    format = "yaml";
+    sopsFile = ../../secrets/renovate.yaml;
+  };
 
   services.renovate = {
     enable = true;
     # Daily; each repo's schedule decides when update PRs actually open
     schedule = "*-*-* 04:00:00";
     credentials.RENOVATE_TOKEN = config.sops.secrets.renovate_github_token.path;
+    # Picked up by detectHostRulesFromEnv as a docker host rule for ghcr.io
+    credentials.DOCKER_GHCR_IO_PASSWORD = config.sops.secrets.renovate_ghcr_token.path;
+    environment.DOCKER_GHCR_IO_USERNAME = "RyanTheRobothead";
     # The nix manager shells out to nix to update flake.lock; it talks to the
     # daemon over its socket, which the sandbox allows
     runtimePackages = [ config.nix.package ];
@@ -29,6 +38,7 @@
       # Repos carry their own renovate.json; never open onboarding PRs
       onboarding = false;
       requireConfig = "required";
+      detectHostRulesFromEnv = true;
     };
   };
 }
