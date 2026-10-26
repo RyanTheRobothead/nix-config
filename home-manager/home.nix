@@ -9,6 +9,13 @@
   nixpkgs-unstable,
   ...
 }:
+let
+  # Bumped daily by Renovate, apart from the weekly nixpkgs-unstable refresh
+  claude-code-pkgs = import inputs.nixpkgs-claude-code {
+    inherit (pkgs.stdenv.hostPlatform) system;
+    config.allowUnfree = true;
+  };
+in
 {
   # You can import other home-manager modules here
   imports = [
@@ -79,8 +86,8 @@
     nixfmt
     haskellPackages.cabal-install
     ghc
-    # claude-code
-    nixpkgs-unstable.claude-code
+    # claude-code; the only claude on PATH, so nothing user-writable can stand in for it
+    claude-code-pkgs.claude-code
     nixpkgs-unstable.opencode
     nixpkgs-unstable.opencode-desktop
     nodejs

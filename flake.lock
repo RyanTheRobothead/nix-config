@@ -70,6 +70,24 @@
         "type": "github"
       }
     },
+    "nixpkgs-claude-code": {
+      "locked": {
+        "lastModified": 1792773339,
+        "narHash": "sha256-rZLrzrC6i+jnTAlvPZHogKDulY7WWDEv9hJeHieO7Zw=",
+        "ref": "nixos-unstable",
+        "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+        "shallow": true,
+        "type": "git",
+        "url": "https://github.com/NixOS/nixpkgs"
+      },
+      "original": {
+        "ref": "nixos-unstable",
+        "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+        "shallow": true,
+        "type": "git",
+        "url": "https://github.com/NixOS/nixpkgs"
+      }
+    },
     "nixpkgs-lib": {
       "locked": {
         "lastModified": 1772328832,
@@ -145,6 +163,7 @@
         "home-manager": "home-manager",
         "nix-flatpak": "nix-flatpak",
         "nixpkgs": "nixpkgs",
+        "nixpkgs-claude-code": "nixpkgs-claude-code",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "plasma-manager": "plasma-manager",
         "schedule-bot": "schedule-bot",

@@ -275,10 +275,8 @@
   };
   home-manager = {
     extraSpecialArgs = { inherit inputs outputs; };
-    users = {
-      # Import your home-manager configuration
-      luckierdodge = import ../home-manager/home.nix;
-    };
+    # home-manager.users.luckierdodge imports home.nix in flake.nix; importing
+    # it here too doubled every list in it (plugins, the whole .zshrc)
     backupFileExtension = "backup";
   };
 

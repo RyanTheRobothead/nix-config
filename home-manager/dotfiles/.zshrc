@@ -145,35 +145,18 @@ export ZSH_TMUX_DEFAULT_SESSION_NAME="Home"
 #export HISTFILESIZE=20000
 #export SAVEHIST=20000
 
-# Set PATH to include private bin if it exists
+# Set PATH to include private bins if they exist, after the system ones so
+# nothing user-writable can stand in for sudo, git and friends
 if [ -d "$HOME/bin" ] ; then
-	PATH="$HOME/bin:$PATH"
+	PATH="$PATH:$HOME/bin"
 fi
 if [ -d "$HOME/.local/bin" ]; then
-	PATH="$HOME/.local/bin:$PATH"
+	PATH="$PATH:$HOME/.local/bin"
 fi
 if [ -d "$HOME/.cargo/bin" ]; then
-	PATH="$HOME/.cargo/bin:$PATH"
+	PATH="$PATH:$HOME/.cargo/bin"
 fi
-
-# Set PATH to include current directory
-PATH=".:${PATH}"
 
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
-
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/home/luckierdodge/miniconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "/home/luckierdodge/miniconda3/etc/profile.d/conda.sh" ]; then
-        . "/home/luckierdodge/miniconda3/etc/profile.d/conda.sh"
-    else
-        export PATH="/home/luckierdodge/miniconda3/bin:$PATH"
-    fi
-fi
-unset __conda_setup
-# <<< conda initialize <<<
