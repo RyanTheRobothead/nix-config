@@ -71,8 +71,11 @@ END);
 // robothead.dev and luckierdodge.dev only redirect to ryandlewis.dev. At
 // Squarespace that was its forwarding service (apex A to a Squarespace IP,
 // www CNAME ext-sq.squarespace.com). deSEC has no forwarding, so both names
-// point at the public proxy, which must serve the 301 (and, since .dev is
-// HSTS-preloaded, hold certificates for them) before these zones go live.
+// point at the public proxy: SWAG on Cerberus serves the 301 from
+// nginx/site-confs/redirect-domains.conf (added 2026-10-26). .dev is
+// HSTS-preloaded, so at cutover, once these names resolve there, issue their
+// own certificate as that file describes; until then it serves SWAG's
+// ryandlewis.dev certificate as a placeholder.
 function redirectToRyandlewis(verification) {
   return [
     A("@", CERBERUS),
