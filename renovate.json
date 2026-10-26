@@ -31,11 +31,12 @@
       "schedule": ["before 6am on saturday"]
     },
     {
-      "description": "claude-code's own nixpkgs pin: its own PR on every daily run, for fast security fixes",
+      "description": "claude-code's own nixpkgs pin: its own PR on every daily run, for fast security fixes; GitHub merges it once CI builds both hosts",
       "matchManagers": ["nix"],
       "matchDepNames": ["nixpkgs-claude-code"],
       "groupName": null,
-      "schedule": ["at any time"]
+      "schedule": ["at any time"],
+      "automerge": true
     }
   ]
 }
