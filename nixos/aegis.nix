@@ -30,6 +30,7 @@
     ../modules/nixos/renovate.nix
     ../modules/nixos/schedule-bot.nix
     ../modules/nixos/vulnscan.nix
+    ../modules/nixos/agent-sudo.nix
     #    <sops-nix/modules/sops>
   ];
 
