@@ -158,6 +158,26 @@ fmt:
     echo "Formatting Nix files..."
     nix fmt
 
+# DNS Commands (dns/dnsconfig.js, applied to deSEC)
+
+# Validate the DNS config offline
+dns-check:
+    nix develop .#dns -c dnscontrol check --config dns/dnsconfig.js
+
+# Show what dns-push would change at deSEC (needs DESEC_TOKEN)
+dns-preview:
+    @test -n "${DESEC_TOKEN:-}" || { echo "Set DESEC_TOKEN first"; exit 1; }
+    nix develop .#dns -c dnscontrol preview --config dns/dnsconfig.js --creds dns/creds.json
+
+# Apply the DNS config to deSEC (needs DESEC_TOKEN)
+dns-push:
+    @test -n "${DESEC_TOKEN:-}" || { echo "Set DESEC_TOKEN first"; exit 1; }
+    nix develop .#dns -c dnscontrol push --config dns/dnsconfig.js --creds dns/creds.json
+
+# Compare a zone's records with a nameserver (default: the zone's live NS)
+dns-verify zone ns="":
+    nix develop .#dns -c dns/verify.sh {{ zone }} {{ ns }}
+
 # Development and Maintenance
 
 # Clean up old generations (user)
