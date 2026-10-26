@@ -31,13 +31,11 @@ if ! shopt -oq posix; then
 	fi
 fi
 
-# Set PATH to include private bin if it exists
+# Set PATH to include private bin if it exists, after the system ones so
+# nothing user-writable can stand in for sudo, git and friends
 if [ -d "$HOME/bin" ] ; then
-	PATH="$HOME/bin:$PATH"
+	PATH="$PATH:$HOME/bin"
 fi
-
-# Set PATH to include current directory
-PATH=".:${PATH}"
 
 # Set TERM to support colors
 TERM='xterm-256color'
@@ -46,21 +44,6 @@ if [ -f "$HOME/.dircolors" ]; then
 	eval `dircolors -b "$HOME/.dircolors"`
 fi
 
-
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/home/luckierdodge/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "/home/luckierdodge/miniconda3/etc/profile.d/conda.sh" ]; then
-        . "/home/luckierdodge/miniconda3/etc/profile.d/conda.sh"
-    else
-        export PATH="/home/luckierdodge/miniconda3/bin:$PATH"
-    fi
-fi
-unset __conda_setup
-# <<< conda initialize <<<
 
 # Prompt Colors
 Red='\[\e[01;31m\]'
@@ -94,16 +77,6 @@ git_prompt()
 	fi
 }
 
-# Add prompt info for conda environment
-conda_env()
-{
-	if [[ -z "$CONDA_DEFAULT_ENV" ]]; then
-		echo ""
-	else
-		echo "${White}«$Purple$CONDA_DEFAULT_ENV${White}»"
-	fi
-}
-
 # Print different colored prompt terminator depending on exit code of previous command
 exit_prompt()
 {
@@ -128,7 +101,7 @@ docker_prompt()
 set_prompt ()
 {
 	exit_code="$(exit_prompt)"
-	PS1="$Cyan\u$White@$(docker_prompt)$White($Cyan\w$(git_prompt)$White)$(conda_env)$exit_code $Reset"
+	PS1="$Cyan\u$White@$(docker_prompt)$White($Cyan\w$(git_prompt)$White)$exit_code $Reset"
 }
 
 export PROMPT_DIRTRIM=2
