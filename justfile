@@ -164,15 +164,15 @@ fmt:
 dns-check:
     nix develop .#dns -c dnscontrol check --config dns/dnsconfig.js
 
-# Show what dns-push would change at deSEC (needs DESEC_TOKEN)
-dns-preview:
+# Show what dns-push would change at deSEC (needs DESEC_TOKEN; e.g. --domains <zone>)
+dns-preview *args:
     @test -n "${DESEC_TOKEN:-}" || { echo "Set DESEC_TOKEN first"; exit 1; }
-    nix develop .#dns -c dnscontrol preview --config dns/dnsconfig.js --creds dns/creds.json
+    nix develop .#dns -c dnscontrol preview --config dns/dnsconfig.js --creds dns/creds.json {{ args }}
 
 # Apply the DNS config to deSEC (needs DESEC_TOKEN)
-dns-push:
+dns-push *args:
     @test -n "${DESEC_TOKEN:-}" || { echo "Set DESEC_TOKEN first"; exit 1; }
-    nix develop .#dns -c dnscontrol push --config dns/dnsconfig.js --creds dns/creds.json
+    nix develop .#dns -c dnscontrol push --config dns/dnsconfig.js --creds dns/creds.json {{ args }}
 
 # Compare a zone's records with a nameserver (default: the zone's live NS)
 dns-verify zone ns="":

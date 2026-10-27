@@ -31,6 +31,7 @@ var GITHUB_PAGES = [
 
 D("ryandlewis.dev", REG_NONE, DnsProvider(DSP_DESEC),
   DefaultTTL(3600),
+  NAMESERVER_TTL(3600), // deSEC: its minimum, and what it sets on the apex NS
 
   // Website: GitHub Pages. deSEC: no ALIAS records, so the apex carries
   // GitHub's published addresses instead of ALIAS ryantherobothead.github.io.
@@ -88,10 +89,12 @@ function redirectToRyandlewis(verification) {
 // and wait out the TTL before switching nameservers.
 D("robothead.dev", REG_NONE, DnsProvider(DSP_DESEC),
   DefaultTTL(3600),
+  NAMESERVER_TTL(3600), // deSEC: its minimum, and what it sets on the apex NS
   redirectToRyandlewis(CNAME("ajd3tkfqnvi6", "gv-ftv4nyjx72binn.dv.googlehosted.com.")),
 END);
 
 D("luckierdodge.dev", REG_NONE, DnsProvider(DSP_DESEC),
   DefaultTTL(3600),
+  NAMESERVER_TTL(3600), // deSEC: its minimum, and what it sets on the apex NS
   redirectToRyandlewis(CNAME("7mlni7bg26nu", "gv-q37q45htgmei7g.dv.googlehosted.com.")),
 END);
