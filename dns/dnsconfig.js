@@ -48,9 +48,10 @@ D("ryandlewis.dev", REG_NONE, DnsProvider(DSP_DESEC),
   A("request", CERBERUS),
   A("warden", CERBERUS),
 
-  // Proton Mail
+  // Proton Mail. mailsec is Proton's backup MX at 20, per its setup guides
+  // (Squarespace had both at 10, which splits delivery between them).
   MX("@", 10, "mail.protonmail.ch."),
-  MX("@", 10, "mailsec.protonmail.ch."),
+  MX("@", 20, "mailsec.protonmail.ch."),
   TXT("@", "protonmail-verification=79858b7fbd5a4ec5bf701b72e678d61283a55395"),
   TXT("@", "v=spf1 include:_spf.protonmail.ch mx ~all"),
   TXT("_dmarc", "v=DMARC1; p=quarantine"),
