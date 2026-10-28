@@ -22,6 +22,7 @@ dnscontrol print-ir --config dnsconfig.js 2>/dev/null |
     | select(.type != "NS")
     | [ .name, .type, (.ttl | tostring),
         ( if .type == "MX" then "\(.mxpreference) \(.target)"
+          elif .type == "CAA" then "\(.caaflag // 0) \(.caatag) \"\(.target)\""
           elif .type == "TXT" then (.txtstrings // [.target] | map("\"" + . + "\"") | join(" "))
           else .target end ) ]
     | @tsv' |

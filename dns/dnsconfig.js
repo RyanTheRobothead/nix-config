@@ -26,12 +26,18 @@ var GITHUB_PAGES = [
   AAAA("@", "2606:50c0:8003::153"),
 ];
 
+// Only Let's Encrypt may issue for these names. Every certificate in use is
+// from it: SWAG, GitHub Pages and Squarespace's forwarding all use it. With
+// no issuewild, the same rule covers wildcards.
+var CAA_LETSENCRYPT_ONLY = CAA("@", "issue", "letsencrypt.org");
+
 // Squarespace's _domainconnect CNAME is dropped from every zone: it only
 // serves Squarespace's own Domain Connect templates.
 
 D("ryandlewis.dev", REG_NONE, DnsProvider(DSP_DESEC),
   DefaultTTL(3600),
   NAMESERVER_TTL(3600), // deSEC: its minimum, and what it sets on the apex NS
+  CAA_LETSENCRYPT_ONLY,
 
   // Website: GitHub Pages. deSEC: no ALIAS records, so the apex carries
   // GitHub's published addresses instead of ALIAS ryantherobothead.github.io.
@@ -91,11 +97,13 @@ function redirectToRyandlewis(verification) {
 D("robothead.dev", REG_NONE, DnsProvider(DSP_DESEC),
   DefaultTTL(3600),
   NAMESERVER_TTL(3600), // deSEC: its minimum, and what it sets on the apex NS
+  CAA_LETSENCRYPT_ONLY,
   redirectToRyandlewis(CNAME("ajd3tkfqnvi6", "gv-ftv4nyjx72binn.dv.googlehosted.com.")),
 END);
 
 D("luckierdodge.dev", REG_NONE, DnsProvider(DSP_DESEC),
   DefaultTTL(3600),
   NAMESERVER_TTL(3600), // deSEC: its minimum, and what it sets on the apex NS
+  CAA_LETSENCRYPT_ONLY,
   redirectToRyandlewis(CNAME("7mlni7bg26nu", "gv-q37q45htgmei7g.dv.googlehosted.com.")),
 END);
