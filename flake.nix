@@ -84,6 +84,22 @@
       # Formatter for your nix files, available through 'nix fmt'
       # Other options beside 'alejandra' include 'nixpkgs-fmt'
       formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-tree);
+      # Tools for managing public DNS (dns/), pinned by flake.lock
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          dns = pkgs.mkShell {
+            packages = with pkgs; [
+              dnscontrol
+              dnsutils
+              jq
+            ];
+          };
+        }
+      );
 
       # Your custom packages and modifications, exported as overlays
       overlays = import ./overlays { inherit inputs; };
