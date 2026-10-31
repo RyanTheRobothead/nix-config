@@ -5,6 +5,14 @@ keys:
   - &admin_yubikey_37817095 age1yubikey1qtlgk5vuyyvzzjf7vepx4ynytzf7sgqvds5axjgtkpeyh4a9jrlq658099j
   - &admin_paper age1xjp2vldqakuc09ykwuw8fgw2vc2sraac8ljcc3upm0mlggu6te7qle3rpj
 creation_rules:
+  # SleeperService's secrets, made before the host exists: admin keys only.
+  # Add its host key here and run sops updatekeys once it is provisioned.
+  - path_regex: secrets/sleeperservice/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+    - age:
+      - *admin_yubikey_37817094
+      - *admin_yubikey_37817095
+      - *admin_paper
   - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
     - age:

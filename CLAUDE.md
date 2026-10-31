@@ -37,8 +37,8 @@ just fmt                     # Format Nix files
 
 # Public DNS (dns/dnsconfig.js, applied to deSEC with DNSControl)
 just dns-check               # Validate offline
-just dns-preview [--domains z] # Diff against deSEC (needs DESEC_TOKEN)
-just dns-push [--domains z]    # Apply the diff (needs DESEC_TOKEN)
+just dns-preview [--domains z] # Diff against deSEC (read-only token in ~/.config/desec/token)
+just dns-push [--domains z]    # Apply the diff (decrypts the apply token from sops; YubiKey)
 just dns-verify <zone> [ns]  # Compare records with a nameserver (default: live NS)
 
 # Maintenance
