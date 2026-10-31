@@ -35,7 +35,9 @@ just update-input <input>    # Update specific input
 just check                   # Check flake configuration
 just fmt                     # Format Nix files
 
-# Public DNS (dns/dnsconfig.js, applied to deSEC with DNSControl)
+# Public DNS (dns/dnsconfig.js, applied to deSEC with DNSControl). CI
+# (.github/workflows/dns.yml) previews DNS PRs, applies on merge to main and
+# checks weekly for drift, so these are for local checks and emergencies.
 just dns-check               # Validate offline
 just dns-preview [--domains z] # Diff against deSEC (read-only token in ~/.config/desec/token)
 just dns-push [--domains z]    # Apply the diff (decrypts the apply token from sops; YubiKey)
