@@ -164,15 +164,17 @@ fmt:
 dns-check:
     nix develop .#dns -c dnscontrol check --config dns/dnsconfig.js
 
-# Show what dns-push would change at deSEC (needs DESEC_TOKEN; e.g. --domains <zone>)
+# Show what dns-push would change at deSEC (e.g. --domains <zone>). Uses
+# DESEC_TOKEN, else the read-only token in ~/.config/desec/token.
 dns-preview *args:
-    @test -n "${DESEC_TOKEN:-}" || { echo "Set DESEC_TOKEN first"; exit 1; }
-    nix develop .#dns -c dnscontrol preview --config dns/dnsconfig.js --creds dns/creds.json {{ args }}
+    DESEC_TOKEN="${DESEC_TOKEN:-$(cat ~/.config/desec/token)}" \
+      nix develop .#dns -c dnscontrol preview --config dns/dnsconfig.js --creds dns/creds.json {{ args }}
 
-# Apply the DNS config to deSEC (needs DESEC_TOKEN)
+# Apply the DNS config to deSEC. Uses DESEC_TOKEN, else decrypts the CI apply
+# token from secrets/desec.yaml (YubiKey touch). Normally CI does this.
 dns-push *args:
-    @test -n "${DESEC_TOKEN:-}" || { echo "Set DESEC_TOKEN first"; exit 1; }
-    nix develop .#dns -c dnscontrol push --config dns/dnsconfig.js --creds dns/creds.json {{ args }}
+    DESEC_TOKEN="${DESEC_TOKEN:-$(sops decrypt --extract '["desec_token_ci_apply"]' secrets/desec.yaml)}" \
+      nix develop .#dns -c dnscontrol push --config dns/dnsconfig.js --creds dns/creds.json {{ args }}
 
 # Compare a zone's records with a nameserver (default: the zone's live NS)
 dns-verify zone ns="":
