@@ -13,7 +13,7 @@
     # with the weekly lock refresh. The rev is spelled out because Renovate
     # only offers digest updates for inputs whose URL names one; renovate.json
     # bumps it daily.
-    nixpkgs-claude-code.url = "git+https://github.com/NixOS/nixpkgs?shallow=1&ref=nixos-unstable&rev=31ecbaca1bdefa45dffc409f0250bd8039ea0010";
+    nixpkgs-claude-code.url = "git+https://github.com/NixOS/nixpkgs?shallow=1&ref=nixos-unstable&rev=1c89083e451e891152365b799595cf7790a43325";
 
     # Home manager
     home-manager.url = "github:nix-community/home-manager/release-26.05";
