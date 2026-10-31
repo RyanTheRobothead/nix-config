@@ -1,0 +1,103 @@
+name: DNS
+
+# dns/dnsconfig.js is the source of truth for the public zones at deSEC.
+# PRs get a preview of what would change, using a read-only token. Merging to
+# main applies it with the write token, which lives in the "dns" environment
+# and so is only handed to runs on main. A weekly preview fails if the live
+# zones have drifted from the config (an edit made in deSEC's web UI).
+on:
+  pull_request:
+    branches: [main]
+    paths: [dns/**, flake.nix, flake.lock, .github/workflows/dns.yml]
+  push:
+    branches: [main]
+    paths: [dns/**, flake.nix, flake.lock, .github/workflows/dns.yml]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dns-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    name: DNS preview
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Check dns/dnsconfig.js
+        run: nix develop .#dns -c dnscontrol check --config dns/dnsconfig.js
+
+      # Fork PRs get no secrets; the offline check above still runs for them.
+      - name: Preview changes at deSEC
+        env:
+          DESEC_TOKEN: ${{ secrets.DESEC_PREVIEW_TOKEN }}
+          DRIFT: ${{ github.event_name == 'schedule' }}
+        run: |
+          if [ -z "$DESEC_TOKEN" ]; then
+            echo "No DESEC_PREVIEW_TOKEN (fork PR?); skipping the preview." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          set -o pipefail
+          extra=()
+          [ "$DRIFT" = true ] && extra=(--expect-no-changes)
+          status=0
+          nix develop .#dns -c dnscontrol --no-colors preview --config dns/dnsconfig.js \
+            --creds dns/creds.json "${extra[@]}" | tee preview.txt || status=$?
+          { echo '### DNS preview'; echo '```'; grep -vE '^(CONCURRENTLY|SERIALLY|Waiting)' preview.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+
+  apply:
+    name: DNS apply
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: dns
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Check dns/dnsconfig.js
+        run: nix develop .#dns -c dnscontrol check --config dns/dnsconfig.js
+
+      - name: Apply to deSEC
+        env:
+          DESEC_TOKEN: ${{ secrets.DESEC_APPLY_TOKEN }}
+        run: |
+          set -o pipefail
+          nix develop .#dns -c dnscontrol --no-colors push --config dns/dnsconfig.js \
+            --creds dns/creds.json | tee push.txt
+          { echo '### DNS apply'; echo '```'; grep -vE '^(CONCURRENTLY|SERIALLY|Waiting)' push.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      # deSEC's secondaries can take a couple of minutes to pick up a change,
+      # so each zone gets a few tries on each server.
+      - name: Verify every zone on both deSEC servers
+        run: |
+          zones=$(nix develop .#dns -c dnscontrol print-ir --config dns/dnsconfig.js 2>/dev/null \
+            | nix develop .#dns -c jq -r '.domains[].name')
+          fail=0
+          for zone in $zones; do
+            for ns in ns1.desec.io ns2.desec.org; do
+              for try in 1 2 3 4 5 6; do
+                nix develop .#dns -c dns/verify.sh "$zone" "$ns" > verify.txt && break
+                if [ "$try" = 6 ]; then cat verify.txt; fail=1; else sleep 30; fi
+              done
+            done
+          done
+          exit $fail
