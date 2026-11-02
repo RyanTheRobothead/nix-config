@@ -25,6 +25,8 @@ Mint a new one before a rebuild and `sops set` it into `host.yaml`.
 2. In the config profile, set the kernel to **Direct Disk**. The disk has its own
    GRUB (BIOS boot partition, `hosts/sleeperservice/disko.nix`); Linode's
    "GRUB 2" mode would read `/boot/grub/grub.cfg` with its own GRUB instead.
+   Turn off the Filesystem/Boot Helpers too, including Auto-configure
+   networking: NixOS declares its own network config.
 3. Delete the 512 MB swap disk and grow the main disk to the full plan. disko
    only partitions `/dev/sda`; the host uses a swapfile.
 
@@ -37,7 +39,9 @@ just provision sleeperservice <public IPv4>
 This decrypts the host key into a temporary `--extra-files` tree (YubiKey
 touch), runs nixos-anywhere, which kexecs into an installer, partitions the disk
 and installs, and deletes the tree. Keep Lish open: if the tailnet join fails,
-log in there as luckierdodge.
+log in there as luckierdodge. The password and the auth key come from the same
+sops file, so if decryption failed neither works; then boot Linode's Rescue Mode
+(Finnix) and mount `/dev/sda2` to inspect the install.
 
 After first boot, from a tailnet machine:
 
