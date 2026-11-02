@@ -21,8 +21,10 @@
 
   nix.settings = {
     experimental-features = "nix-command flakes";
-    # nixos-rebuild --target-host copies unsigned paths as the SSH user
-    trusted-users = [ "@wheel" ];
+    # Paths built on Aegis are signed by its daemon, so just deploy can copy
+    # them as an ordinary user. No trusted-users: that would make the SSH
+    # user root-equivalent without the sudo password.
+    extra-trusted-public-keys = [ "aegis-1:2cCYc2w+nAreWp1p+IH8SYkTWxZQzdJqshhd3WEzPXw=" ];
   };
   nix.optimise.automatic = true;
   nix.gc = {
@@ -81,6 +83,9 @@
     # Used for sudo and for logging in on the Lish console
     hashedPasswordFile = config.sops.secrets.luckierdodge_password_hash.path;
     openssh.authorizedKeys.keys = [
+      # Aegis, for just deploy. Agents on Aegis can read it too; the sudo
+      # password and the signed-paths rule above keep that unprivileged.
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDBFLkyh44j2qa08ujLsr7PDNP409JI73VyFsntsfims ryan@ryandlewis.dev (aegis)"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFA2LMlWKHE6wMXqoWENyBdtnIwPx5krhMsbDq8CX+CA cargocult (Termius)"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIv9qQs3Xrlxg3UnN8mflkM8m2z+B4dnR7ys0843aJlO pixel-10-pro-fold"
       # Emergency access; private key is stored in Vaultwarden

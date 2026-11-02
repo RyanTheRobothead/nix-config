@@ -67,6 +67,30 @@ just deploy sleeperservice
 follows `main` through `system.autoUpgrade` (03:40, rebooting between 03:30 and
 05:00 when a kernel changes) until comin replaces it.
 
+## Deploys from Aegis
+
+`just deploy` copies paths as luckierdodge, who is not a trusted Nix user on the
+servers: trusting the SSH user would make it root-equivalent without the sudo
+password, and agents on Aegis can use the same SSH key. Instead Aegis's daemon
+signs every path it builds with `/var/lib/nix-signing/aegis-1.sec` (root-only),
+and the servers trust its public half (`modules/profiles/server.nix`).
+
+Making the key (once, or after losing Aegis):
+
+```bash
+sudo install -d -m 700 /var/lib/nix-signing
+sudo sh -c 'umask 077; nix key generate-secret --key-name aegis-1 > /var/lib/nix-signing/aegis-1.sec'
+sudo sh -c 'nix key convert-secret-to-public < /var/lib/nix-signing/aegis-1.sec'
+```
+
+Put the public key in `extra-trusted-public-keys`, then `just switch aegis`.
+Paths built before the key existed are unsigned; sign a host's closure once:
+
+```bash
+sudo nix store sign -r --key-file /var/lib/nix-signing/aegis-1.sec \
+  "$(nix build --no-link --print-out-paths .#nixosConfigurations.sleeperservice.config.system.build.toplevel)"
+```
+
 ## After a rebuild
 
 The host key is the same, so nothing in sops needs re-encrypting and SSH clients
