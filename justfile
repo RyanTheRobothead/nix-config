@@ -6,7 +6,7 @@ default:
     @just --list
 
 # Variables for host configurations
-nixos_hosts := "aegis"
+nixos_hosts := "aegis sleeperservice"
 hm_hosts := "luckierdodge@cerberus"
 
 # NixOS Commands
@@ -43,6 +43,28 @@ test host="": kill-discord
     fi
     echo "Testing NixOS configuration for {{ host }}..."
     sudo nixos-rebuild test --flake .#{{ host }}
+
+# Remote Hosts
+
+# Deploy a remote host over the tailnet (asks for its sudo password)
+deploy host:
+    nixos-rebuild switch --flake .#{{ host }} --target-host luckierdodge@{{ host }} --sudo --ask-sudo-password
+
+# Install a host from scratch with nixos-anywhere, wiping its disk. Decrypts
+# its SSH host key (its sops identity) from secrets/<host>/ (YubiKey touch).
+# The target must accept SSH as root, e.g. a fresh Linode's Debian image.
+provision host ip:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    extra=$(mktemp -d)
+    trap 'rm -rf "$extra"' EXIT
+    install -d -m 755 "$extra/etc/ssh"
+    sops decrypt --input-type json --output-type binary \
+      "secrets/{{ host }}/ssh_host_ed25519_key.json" > "$extra/etc/ssh/ssh_host_ed25519_key"
+    chmod 600 "$extra/etc/ssh/ssh_host_ed25519_key"
+    cp "secrets/{{ host }}/ssh_host_ed25519_key.pub" "$extra/etc/ssh/"
+    nix run github:nix-community/nixos-anywhere -- \
+      --flake .#{{ host }} --extra-files "$extra" --target-host root@{{ ip }}
 
 # Home Manager Commands
 
