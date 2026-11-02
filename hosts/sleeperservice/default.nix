@@ -1,6 +1,6 @@
-# SleeperService: the Linode VPS replacing Cerberus. Ingress, Headscale and
-# external monitoring land here in later steps of Phase 1; this is the base
-# that installs with nixos-anywhere and comes up on the tailnet.
+# SleeperService: the Linode VPS replacing Cerberus. It installs with
+# nixos-anywhere and comes up on the tailnet; Headscale and external
+# monitoring land here in later steps of Phase 1.
 { modulesPath, ... }:
 {
   imports = [
@@ -8,6 +8,7 @@
     ./disko.nix
     ../../modules/profiles/server.nix
     ../../modules/profiles/hardening.nix
+    ../../modules/infra/ingress.nix
   ];
 
   networking.hostName = "sleeperservice";
@@ -35,6 +36,8 @@
   networking.usePredictableInterfaceNames = false;
   networking.useDHCP = false;
   networking.interfaces.eth0.useDHCP = true;
+  # One stable IPv6 address (the one in DNS), no rotating privacy addresses
+  networking.tempAddresses = "disabled";
 
   # comin will evaluate the flake here (about 1.5 GB for Aegis's config)
   swapDevices = [
@@ -42,12 +45,6 @@
       device = "/var/lib/swapfile";
       size = 2048;
     }
-  ];
-
-  # Ingress (nginx, Phase 1 step 2)
-  networking.firewall.allowedTCPPorts = [
-    80
-    443
   ];
 
   sops.secrets.tailscale_authkey.sopsFile = ../../secrets/sleeperservice/host.yaml;
