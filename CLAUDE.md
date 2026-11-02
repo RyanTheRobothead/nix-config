@@ -23,6 +23,8 @@ just auto-build
 
 # Host-specific commands
 just switch <host>           # NixOS hosts: aegis
+just deploy <host>           # Remote hosts over the tailnet: sleeperservice
+just provision <host> <ip>   # Install from scratch with nixos-anywhere (docs/runbooks/rebuild-host.md)
 just switch-hm <host>        # Home Manager: luckierdodge@cerberus
 
 # Build without switching
@@ -189,6 +191,7 @@ The repository uses a modular approach where:
 
 ### Machine Configurations
 - **aegis**: x86_64-linux NixOS system
+- **sleeperservice**: x86_64-linux NixOS VPS on Linode (`hosts/sleeperservice/`, profiles in `modules/profiles/`), replacing Cerberus
 - **cerberus**: Home Manager only configuration
 
 ### Development Environment

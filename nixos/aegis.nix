@@ -54,6 +54,21 @@
   # age-plugin-yubikey reaches the YubiKeys through pcscd
   services.pcscd.enable = true;
 
+  # The daemon signs every path it builds with this root-only key, so remote
+  # hosts can accept deploys from Aegis without trusting the SSH user (which
+  # agents running as luckierdodge could also use). Public half in
+  # modules/profiles/server.nix; key made per docs/runbooks/rebuild-host.md.
+  nix.settings.secret-key-files = [ "/var/lib/nix-signing/aegis-1.sec" ];
+
+  # Pinned from the repo, so the first SSH to a fresh install is verified
+  programs.ssh.knownHosts.sleeperservice = {
+    hostNames = [
+      "sleeperservice"
+      "100.100.75.35"
+    ];
+    publicKeyFile = ../secrets/sleeperservice/ssh_host_ed25519_key.pub;
+  };
+
   # Disable UAS for ASMedia 2115 USB-SATA bridge to fix I/O errors
   # Forces the device to use standard USB Mass Storage instead
   # Applies to all drives in the DAS enclosure (174c:55aa)

@@ -30,6 +30,10 @@
     # sops-nix
     sops-nix.url = "github:Mic92/sops-nix";
 
+    # Declarative partitioning, used by nixos-anywhere (hosts/*/disko.nix)
+    disko.url = "github:nix-community/disko";
+    disko.inputs.nixpkgs.follows = "nixpkgs";
+
     # nix-flatpak
     nix-flatpak.url = "github:gmodena/nix-flatpak";
 
@@ -50,6 +54,7 @@
       nixpkgs-unstable,
       home-manager,
       sops-nix,
+      disko,
       vscode-server,
       nix-flatpak,
       plasma-manager,
@@ -160,6 +165,17 @@
               )
             ];
           };
+
+        # Linode VPS, installed with nixos-anywhere (just provision)
+        sleeperservice = nixpkgs.lib.nixosSystem {
+          specialArgs = { inherit inputs outputs; };
+          modules = [
+            { nixpkgs.hostPlatform = "x86_64-linux"; }
+            ./hosts/sleeperservice
+            disko.nixosModules.disko
+            sops-nix.nixosModules.sops
+          ];
+        };
       };
 
       # Standalone home-manager configuration entrypoint
