@@ -9,9 +9,9 @@
 # Scan: Syft SBOMs each new digest (Aegis's from the spool, Cerberus's from
 # its registry) and sbomnix the system when it changes; Grype rescans every
 # SBOM every 6 hours. Results land in report/report.json and a textfile
-# metric. New known-exploited findings on public services page Discord at
-# once; the daily summary lists those and public Criticals, then anything else
-# new; and any vulnscan unit failing says so there too.
+# metric. New Critical or known-exploited findings on public services page
+# Discord at once; the weekly summary lists those, then anything else new; and
+# any vulnscan unit failing says so there too.
 #
 # Trust: every CA bundle Syft finds in an image, and the host's, is checked
 # against security/ca-denylist.toml along with the runtimes that carry their
@@ -87,6 +87,8 @@ let
     VULNSCAN_CA_DENYLIST = "${../../security/ca-denylist.toml}";
     VULNSCAN_FIX_WATCH = "${../../security/fix-watch.toml}";
     VULNSCAN_WEBHOOK_FILE = "%d/discord-webhook";
+    # @ryantherobothead, mentioned by pages and summaries
+    VULNSCAN_PING_USER = "250137556899987468";
     GRYPE_DB_CACHE_DIR = "/var/cache/vulnscan/grype";
     # Syft unpacks whole images here; immich's are several GB
     TMPDIR = "/var/cache/vulnscan/tmp";
@@ -273,11 +275,11 @@ in
   };
 
   systemd.services.vulnscan-summary = {
-    description = "Post the daily vulnerability summary";
+    description = "Post the weekly vulnerability summary";
     onFailure = [ "vulnscan-notify-failure@%n.service" ];
     wants = [ "network-online.target" ];
     after = [ "network-online.target" ];
-    startAt = "*-*-* 08:00:00";
+    startAt = "Mon *-*-* 08:00:00";
     environment = scanEnvironment;
     serviceConfig = scanHardening // {
       Type = "oneshot";
