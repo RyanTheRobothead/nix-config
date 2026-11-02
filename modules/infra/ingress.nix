@@ -8,7 +8,6 @@
   sops.secrets.desec_token_acme_sleeperservice.sopsFile = ../../secrets/sleeperservice/desec.yaml;
   sops.templates."acme-desec-env".content = ''
     DESEC_TOKEN=${config.sops.placeholder.desec_token_acme_sleeperservice}
-    DESEC_PROPAGATION_TIMEOUT=600
   '';
 
   security.acme = {
@@ -17,6 +16,14 @@
       dnsProvider = "desec";
       environmentFile = config.sops.templates."acme-desec-env".path;
       group = "nginx";
+      # lego's check passes once the nameservers it asks have the challenge,
+      # but deSEC's ns2 is anycast and its nodes lag ns1 by minutes, so Let's
+      # Encrypt's vantage points could still miss it (seen on the first order:
+      # the apex validated, the wildcard got "no TXT record"). Wait instead.
+      extraLegoFlags = [
+        "--dns.propagation-wait"
+        "300s"
+      ];
     };
     certs."ryandlewis.dev".extraDomainNames = [ "*.ryandlewis.dev" ];
   };
