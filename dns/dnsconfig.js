@@ -39,6 +39,12 @@ var GITHUB_PAGES = [
 // no issuewild, the same rule covers wildcards.
 var CAA_LETSENCRYPT_ONLY = CAA("@", "issue", "letsencrypt.org");
 
+// ACME DNS-01 challenges (lego on SleeperService and Aegis, with the scoped
+// tokens from dns/mk-tokens.sh) come and go outside this file. Without this,
+// an apply during a renewal would delete the challenge, and a leftover one
+// would fail the weekly drift check.
+var IGNORE_ACME_CHALLENGES = IGNORE("_acme-challenge", "TXT");
+
 // Squarespace's _domainconnect CNAME is dropped from every zone: it only
 // serves Squarespace's own Domain Connect templates.
 
@@ -46,6 +52,7 @@ D("ryandlewis.dev", REG_NONE, DnsProvider(DSP_DESEC),
   DefaultTTL(3600),
   NAMESERVER_TTL(3600), // deSEC: its minimum, and what it sets on the apex NS
   CAA_LETSENCRYPT_ONLY,
+  IGNORE_ACME_CHALLENGES,
 
   // Website: GitHub Pages. deSEC: no ALIAS records, so the apex carries
   // GitHub's published addresses instead of ALIAS ryantherobothead.github.io.
@@ -112,6 +119,7 @@ D("robothead.dev", REG_NONE, DnsProvider(DSP_DESEC),
   DefaultTTL(3600),
   NAMESERVER_TTL(3600), // deSEC: its minimum, and what it sets on the apex NS
   CAA_LETSENCRYPT_ONLY,
+  IGNORE_ACME_CHALLENGES,
   redirectToRyandlewis(CNAME("ajd3tkfqnvi6", "gv-ftv4nyjx72binn.dv.googlehosted.com.")),
 END);
 
@@ -119,5 +127,6 @@ D("luckierdodge.dev", REG_NONE, DnsProvider(DSP_DESEC),
   DefaultTTL(3600),
   NAMESERVER_TTL(3600), // deSEC: its minimum, and what it sets on the apex NS
   CAA_LETSENCRYPT_ONLY,
+  IGNORE_ACME_CHALLENGES,
   redirectToRyandlewis(CNAME("7mlni7bg26nu", "gv-q37q45htgmei7g.dv.googlehosted.com.")),
 END);
