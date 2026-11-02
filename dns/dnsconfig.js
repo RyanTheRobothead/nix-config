@@ -14,6 +14,14 @@ var DSP_DESEC = NewDnsProvider("desec");
 // Cerberus (Linode). Phase 2 moves these names to SleeperService.
 var CERBERUS = "23.239.27.17";
 
+// SleeperService (Linode), Cerberus's replacement. Unlike Cerberus it has
+// IPv6, so its names get both address families.
+var SLEEPERSERVICE_V4 = "172.234.194.242";
+var SLEEPERSERVICE_V6 = "2600:3c06::2000:a7ff:fe63:bba7";
+function sleeperservice(name) {
+  return [A(name, SLEEPERSERVICE_V4), AAAA(name, SLEEPERSERVICE_V6)];
+}
+
 // GitHub Pages apex addresses, from GitHub's custom-domain docs.
 var GITHUB_PAGES = [
   A("@", "185.199.108.153"),
@@ -53,6 +61,12 @@ D("ryandlewis.dev", REG_NONE, DnsProvider(DSP_DESEC),
   A("plex", CERBERUS, TTL(14400)),
   A("request", CERBERUS),
   A("warden", CERBERUS),
+
+  // SleeperService (Phase 1): the host itself, the nginx test page, and
+  // Headscale's control server. Explicit names win over the wildcard.
+  sleeperservice("sleeperservice"),
+  sleeperservice("test"),
+  sleeperservice("hs"),
 
   // Proton Mail. mailsec is Proton's backup MX at 20, per its setup guides
   // (Squarespace had both at 10, which splits delivery between them).
