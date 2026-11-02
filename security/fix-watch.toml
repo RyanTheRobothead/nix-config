@@ -1,6 +1,6 @@
 # Vulnerabilities with no fixed image yet, and what to undo once there is one
 # (Phase 6 Stage A). vulnscan posts once when every listed container runs a
-# fixed version, and the daily summary shows each watch still waiting.
+# fixed version, and the weekly summary shows each watch still waiting.
 #
 # `fixed` is the upstream release. Alpine and Debian often backport a fix
 # without it (8.5.11-r1), so when Grype starts reporting one of `cves` with a

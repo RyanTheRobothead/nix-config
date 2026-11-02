@@ -1,16 +1,16 @@
 """vulnscan-scan -- SBOMs, Grype rescans, the report and Discord alerts.
 
   vulnscan-scan scan              SBOM new digests, rescan everything, alert
-  vulnscan-scan summary           post the daily summary
+  vulnscan-scan summary           post the weekly summary
   vulnscan-scan notify-failure U  post that unit U failed
   vulnscan-scan nix-trial         run both Nix closure scanners, record results
 
 Reads the inventories vulnscan-inventory writes. Image SBOMs come from the
 saved archive for this host's images and from the registry, by digest, for
 other hosts'. A finding is one CVE in one container, however many of its
-packages carry it. A finding pages when its container is public and it is in
-CISA's Known Exploited Vulnerabilities catalog. The daily summary lists those
-and every Critical on a public service, then anything else new.
+packages carry it. A finding pages when its container is public and it is
+Critical or in CISA's Known Exploited Vulnerabilities catalog. The weekly
+summary lists those, then anything else new.
 
 Trust: every CA bundle in every image (captured by Syft alongside the SBOM)
 and on this host is checked against security/ca-denylist.toml, as are the
@@ -18,7 +18,8 @@ runtimes that carry their own trust decisions. New trust findings post once.
 Fix watches (security/fix-watch.toml) post when a fix appears and again when
 every watched container runs it.
 
-Paths and the webhook come from VULNSCAN_* env vars set by the NixOS module.
+Paths, the webhook and who to ping come from VULNSCAN_* env vars set by the
+NixOS module.
 """
 
 import base64
@@ -46,6 +47,8 @@ SYFT_CONFIG = os.environ.get("VULNSCAN_SYFT_CONFIG")
 CA_DENYLIST = os.environ.get("VULNSCAN_CA_DENYLIST")
 FIX_WATCH = os.environ.get("VULNSCAN_FIX_WATCH")
 WEBHOOK_FILE = os.environ.get("VULNSCAN_WEBHOOK_FILE")
+# The Discord user ID pages and summaries mention
+PING_USER = os.environ.get("VULNSCAN_PING_USER")
 # Write Discord messages to this file instead of posting them
 DRY_RUN = os.environ.get("VULNSCAN_DISCORD_DRY_RUN")
 HOST = os.environ.get("VULNSCAN_HOST", socket.gethostname())
@@ -278,11 +281,9 @@ def findings_for(c, scan):
             if v not in f["fixedIn"]:
                 f["fixedIn"].append(v)
     for f in by_id.values():
-        public = f["exposure"] == "public"
-        # Critical alone is too common to page on (Debian and Alpine carry
-        # many with no fix); those wait for the summary
-        f["page"] = public and f["kev"]
-        f["notable"] = public and (f["kev"] or f["severity"] == "Critical")
+        # Only new findings page, so the many unfixed Criticals Debian and
+        # Alpine carry page once, not every scan
+        f["page"] = f["exposure"] == "public" and (f["kev"] or f["severity"] == "Critical")
     return list(by_id.values())
 
 
@@ -533,9 +534,13 @@ def describe(f):
     return f"{f['host']}/{f['container']}: {f['id']} {f['severity']}{kev} in {pkgs}; {fix}"
 
 
-def message(title, lines, footer=""):
+def mention():
+    return f"<@{PING_USER}> " if PING_USER else ""
+
+
+def message(title, lines, footer="", ping=False):
     """A Discord message that fits, ending with how many lines didn't."""
-    out = [title]
+    out = [(mention() if ping else "") + title]
     for i, line in enumerate(lines):
         rest = len(lines) - i
         more = f"...and {rest} more in {REPORT}"
@@ -558,7 +563,9 @@ def post(content):
         log(content)
         return
     url = Path(WEBHOOK_FILE).read_text().strip()
-    body = json.dumps({"content": content, "allowed_mentions": {"parse": []}})
+    # Only PING_USER may be mentioned, whatever an image's package names say
+    allowed = {"parse": [], "users": [PING_USER] if PING_USER else []}
+    body = json.dumps({"content": content, "allowed_mentions": allowed})
     req = urllib.request.Request(
         url,
         data=body.encode(),
@@ -648,12 +655,12 @@ def scan():
         if paging:
             title = (
                 f"**Vulnerability scanning is live.** {len(paging)} findings on "
-                f"public services are known exploited:"
+                f"public services are Critical or known exploited:"
             )
         else:
             title = (
                 "**Vulnerability scanning is live.** Nothing on public services "
-                "is known exploited; Criticals are in the daily summary."
+                "is Critical or known exploited."
             )
         post(message(title, [describe(f) for f in paging]))
     else:
@@ -663,6 +670,7 @@ def scan():
                 message(
                     f"**{len(new)} new vulnerabilities on public services**",
                     [describe(f) for f in new],
+                    ping=True,
                 )
             )
     alert_trust(state, trust)
@@ -738,7 +746,7 @@ def summary():
     new = [f for f in findings if state["seen"].get(f["key"], "") > since]
     resolved = [k for k, t in state["resolved"].items() if t > since]
     paging = [f for f in findings if f["page"]]
-    critical = [f for f in findings if f["notable"] and not f["page"]]
+    kev = [f for f in paging if f["kev"]]
     footer_bits = [f"{len(resolved)} resolved since the last summary"]
     if report["unscanned"]:
         footer_bits.append("not scanned: " + ", ".join(report["unscanned"]))
@@ -746,22 +754,20 @@ def summary():
     unchecked = report.get("trustUnchecked", [])
     waiting = [w for w in report.get("watches", []) if not w["done"]]
     title = (
-        f"**Daily vulnerability summary** ({'; '.join(totals) or 'no findings'})\n"
-        f"On public services: {len(paging)} known exploited, {len(critical)} other Critical. "
+        f"**Weekly vulnerability summary** ({'; '.join(totals) or 'no findings'})\n"
+        f"On public services: {len(kev)} known exploited, {len(paging) - len(kev)} other Critical. "
         f"{len(new)} new since the last summary. "
         f"Trust: {len({t['where'] for t in trust})} places flagged, {len(unchecked)} unchecked; "
         f"{len(waiting)} fix watches waiting"
     )
-    lines = [describe(f) for f in paging + critical] + [
-        describe(f) for f in new if not f["notable"]
-    ]
-    post(message(title, lines, "; ".join(footer_bits)))
+    lines = [describe(f) for f in paging] + [describe(f) for f in new if not f["page"]]
+    post(message(title, lines, "; ".join(footer_bits), ping=True))
     # Its own message, so the Critical list can't push it off the end
     if trust or unchecked or waiting:
         detail = [describe_watch(w) for w in waiting] + trust_lines(trust)
         if unchecked:
             detail.append("trust not checked: " + ", ".join(unchecked))
-        post(message("**Trust and fix watches**", detail))
+        post(message("**Trust and fix watches**", detail, ping=True))
     state["lastSummary"] = now()
     state["resolved"] = {}
     write_json(ALERTS, state)
