@@ -53,7 +53,8 @@ deploy host:
 # Install a host from scratch with nixos-anywhere, wiping its disk. Decrypts
 # its SSH host key (its sops identity) from secrets/<host>/ (YubiKey touch).
 # The target must accept SSH as root, e.g. a fresh Linode's Debian image.
-provision host ip:
+# Extra arguments go to nixos-anywhere (e.g. --no-reboot).
+provision host ip *args:
     #!/usr/bin/env bash
     set -euo pipefail
     extra=$(mktemp -d)
@@ -64,7 +65,7 @@ provision host ip:
     chmod 600 "$extra/etc/ssh/ssh_host_ed25519_key"
     cp "secrets/{{ host }}/ssh_host_ed25519_key.pub" "$extra/etc/ssh/"
     nix run github:nix-community/nixos-anywhere -- \
-      --flake .#{{ host }} --extra-files "$extra" --target-host root@{{ ip }}
+      --flake .#{{ host }} --extra-files "$extra" --target-host root@{{ ip }} {{ args }}
 
 # Home Manager Commands
 

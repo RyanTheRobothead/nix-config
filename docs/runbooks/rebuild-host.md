@@ -20,28 +20,40 @@ Mint a new one before a rebuild and `sops set` it into `host.yaml`.
 
 ## Linode
 
+The stock Debian image is a bare ext4 filesystem with no partition table or
+bootloader, so it only boots in Linode's "GRUB 2" kernel mode. Install from it
+as created, and switch the boot settings only after disko has written NixOS's
+own GRUB.
+
 1. Create the Linode in Cerberus's region from the stock Debian image, 2 CPU /
-   4 GB, with a root password and an SSH key for root.
-2. In the config profile, set the kernel to **Direct Disk**. The disk has its own
-   GRUB (BIOS boot partition, `hosts/sleeperservice/disko.nix`); Linode's
-   "GRUB 2" mode would read `/boot/grub/grub.cfg` with its own GRUB instead.
-   Turn off the Filesystem/Boot Helpers too, including Auto-configure
-   networking: NixOS declares its own network config.
-3. Delete the 512 MB swap disk and grow the main disk to the full plan. disko
-   only partitions `/dev/sda`; the host uses a swapfile.
+   4 GB, with a root password and an SSH key for root. Leave the config
+   profile's defaults: kernel "GRUB 2", boot helpers on.
+2. Optional, while it is powered off: delete the 512 MB swap disk and grow the
+   main disk to the full plan. disko only partitions `/dev/sda`; the host uses a
+   swapfile. Boot it again and check `ssh root@<ip>` works.
 
 ## Install
 
 ```bash
-just provision sleeperservice <public IPv4>
+just provision sleeperservice <public IPv4> --no-reboot
 ```
 
 This decrypts the host key into a temporary `--extra-files` tree (YubiKey
 touch), runs nixos-anywhere, which kexecs into an installer, partitions the disk
-and installs, and deletes the tree. Keep Lish open: if the tailnet join fails,
-log in there as luckierdodge. The password and the auth key come from the same
-sops file, so if decryption failed neither works; then boot Linode's Rescue Mode
-(Finnix) and mount `/dev/sda2` to inspect the install.
+and installs, and deletes the tree. `--no-reboot` leaves the installer running
+so the boot settings can change first:
+
+1. Shut the Linode down from Cloud Manager.
+2. In the config profile, set the kernel to **Direct Disk**, which boots the
+   disk's own GRUB (BIOS boot partition, `hosts/sleeperservice/disko.nix`).
+   Turn off the Filesystem/Boot Helpers too, including Auto-configure
+   networking: NixOS declares its own network config.
+3. Boot it, watching Lish (Weblish or `ssh -t <user>@lish-<region>.linode.com`).
+
+If the tailnet join fails, log in on Lish as luckierdodge. The password and the
+auth key come from the same sops file, so if decryption failed neither works;
+then boot Linode's Rescue Mode (Finnix) and mount `/dev/sda2` to inspect the
+install.
 
 After first boot, from a tailnet machine:
 
