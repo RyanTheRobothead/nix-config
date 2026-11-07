@@ -7,7 +7,7 @@
 # fixed version for a watched container, that version is the threshold
 # instead.
 
-# No watches open. An entry looks like:
+# An entry looks like:
 #
 # [[watch]]
 # name = "PHP2Shell"
@@ -16,3 +16,24 @@
 # containers = ["cerberus/swag", "aegis/nextcloud"]
 # fixed = "8.5.12"
 # then = "Revert the lockdown: ..."
+
+[[watch]]
+name = "brotli (CVE-2026-111497)"
+# Known exploited. Debian and Ubuntu have fixed packages; these images
+# haven't been rebuilt on them yet. Grype's fixed version is the threshold.
+# Foundry isn't listed: Alpine 3.18 has no fixed brotli-libs, so it needs
+# a newer image, not a rebuild.
+cves = ["CVE-2026-111497"]
+purls = ["pkg:deb/debian/libbrotli1", "pkg:deb/ubuntu/libbrotli1"]
+containers = [
+  "aegis/immich_server",
+  "aegis/vaultwarden",
+  "aegis/jellyfin",
+  "aegis/ombi",
+  "aegis/plex",
+]
+# Only a fallback: Grype reports each container's own distro fix, which is
+# the threshold. This is the highest of those, so a fallback can't close the
+# watch early
+fixed = "1.2.0-3ubuntu0.1"
+then = "Nothing to undo: once Renovate brings in the rebuilt images, delete this watch."
