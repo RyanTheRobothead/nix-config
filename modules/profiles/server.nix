@@ -57,6 +57,10 @@
     dnsutils
   ];
 
+  # Terminfo for the terminals we SSH in from (Ghostty sends
+  # TERM=xterm-ghostty), so zsh and tmux know what they're drawing on
+  environment.enableAllTerminfo = true;
+
   environment.shells = with pkgs; [ zsh ];
   programs.zsh.enable = true;
 
