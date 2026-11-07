@@ -430,39 +430,51 @@ def check_trust(cs):
 
 
 def check_watches(cs, scans):
-    """Each fix watch's state in every container it names."""
+    """Each fix watch's state in every container it names.
+
+    Grype matches only vulnerable versions, so while it matches a watched CVE
+    in a container, that container waits; once it matches the CVE somewhere
+    in the watch but not here, this one is fixed. Only when Grype matches it
+    nowhere (fixed everywhere, or not in its data yet) does the upstream
+    `fixed` release decide, compared by its numbers. Distro versions are
+    never compared here: digits alone order 1.1.0-2build2 above
+    1.1.0-2ubuntu0.1, which dpkg doesn't.
+    """
     out = []
     for w in load_toml(FIX_WATCH).get("watch", []):
         status = {"name": w["name"], "then": w["then"], "containers": []}
+        checked = []
         for where in w["containers"]:
             host, name = where.split("/", 1)
             c = next((c for c in cs if c["host"] == host and c["name"] == name), None)
             entry = {"where": where, "state": "unchecked", "versions": []}
-            if c is not None:
-                hexd = c["digest"].removeprefix("sha256:")
-                comps = components(sbom_path(hexd)) if sbom_path(hexd).exists() else None
-                if comps is not None:
-                    entry["versions"] = sorted({v for p, v in comps if p in w["purls"]})
-                    # A distro may backport the fix without the upstream
-                    # release: trust Grype's fixed version when it has one
-                    learned = sorted(
-                        (
-                            fv
-                            for m in scans.get(hexd, {}).get("matches", [])
-                            if cve_id(m) in w["cves"]
-                            for fv in m["vulnerability"].get("fix", {}).get("versions", [])
-                        ),
-                        key=version_key,
-                    )
-                    entry["threshold"] = learned[0] if learned else w["fixed"]
-                    entry["learned"] = bool(learned)
-                    fixed = all(
-                        version_key(v) >= version_key(entry["threshold"])
-                        for v in entry["versions"]
-                    )
-                    # No such package any more counts as fixed
-                    entry["state"] = "fixed" if fixed else "waiting"
             status["containers"].append(entry)
+            if c is None:
+                continue
+            hexd = c["digest"].removeprefix("sha256:")
+            if not sbom_path(hexd).exists():
+                continue
+            comps = components(sbom_path(hexd))
+            entry["versions"] = sorted({v for p, v in comps if p in w["purls"]})
+            matches = [
+                m for m in scans.get(hexd, {}).get("matches", []) if cve_id(m) in w["cves"]
+            ]
+            learned = sorted(
+                {fv for m in matches for fv in m["vulnerability"].get("fix", {}).get("versions", [])}
+            )
+            entry["learned"] = bool(learned)
+            entry["threshold"] = ", ".join(learned) or w.get("fixed", "a fixed release")
+            checked.append((entry, bool(matches)))
+        known = any(matched for _, matched in checked)
+        for entry, matched in checked:
+            if matched:
+                entry["state"] = "waiting"
+            elif known or "fixed" not in w:
+                entry["state"] = "fixed"
+            else:
+                # No such package any more counts as fixed
+                ok = all(version_key(v) >= version_key(w["fixed"]) for v in entry["versions"])
+                entry["state"] = "fixed" if ok else "waiting"
         states = [e["state"] for e in status["containers"]]
         status["done"] = all(s == "fixed" for s in states)
         status["fixKnown"] = any(e.get("learned") for e in status["containers"])
@@ -519,6 +531,8 @@ def describe_watch(w):
         versions = ", ".join(e["versions"]) or "not present"
         if e["state"] == "unchecked":
             parts.append(f"{e['where']} not checked")
+        elif e["state"] == "fixed":
+            parts.append(f"{e['where']} {versions}, fixed")
         else:
             parts.append(f"{e['where']} {versions} (needs {e['threshold']})")
     return f"{w['name']}: " + "; ".join(parts)
@@ -618,6 +632,42 @@ def write_metrics(report):
     os.replace(tmp, METRICS)
 
 
+def page_level(f):
+    return "kev" if f["kev"] else "critical"
+
+
+def pages(state, findings):
+    """What to page, and record it: findings that start paging, and ones
+    that page already but have since become known exploited.
+
+    state["paged"] holds the level each key last paged at. A finding seen
+    before it qualified (not yet in KEV, or a severity Grype raised later)
+    still pages when it does; one that resolves can page again if it returns.
+    """
+    if "paged" not in state:
+        # Before this existed, pages went only to unseen keys. The Critical
+        # baseline was deliberately not paged when the threshold widened on
+        # 2026-11-02; known-exploited findings were never paged at all
+        state["paged"] = {
+            f["key"]: "critical" for f in findings if f["page"] and not f["kev"]
+        }
+    paged = state["paged"]
+    new, escalated = [], []
+    for f in findings:
+        if not f["page"]:
+            continue
+        level = page_level(f)
+        if f["key"] not in paged:
+            new.append(f)
+        elif level == "kev" and paged[f["key"]] != "kev":
+            escalated.append(f)
+        paged[f["key"]] = level
+    current = {f["key"] for f in findings if f["page"]}
+    for key in set(paged) - current:
+        del paged[key]
+    return new, escalated
+
+
 def scan():
     cs = containers()
     update_sboms(cs)
@@ -663,7 +713,10 @@ def scan():
     current = {f["key"]: f for f in findings}
     if state is None:
         # First run: one message for what's already there, not a flood
-        state = {"seen": {}, "resolved": {}, "lastSummary": now()}
+        state = {"seen": {}, "resolved": {}, "lastSummary": now(), "paged": {}}
+        for f in findings:
+            if f["page"]:
+                state["paged"][f["key"]] = page_level(f)
         paging = [f for f in findings if f["page"]]
         if paging:
             title = (
@@ -677,12 +730,20 @@ def scan():
             )
         post(message(title, [describe(f) for f in paging]))
     else:
-        new = [f for f in findings if f["page"] and f["key"] not in state["seen"]]
+        new, escalated = pages(state, findings)
         if new:
             post(
                 message(
                     f"**{len(new)} new vulnerabilities on public services**",
                     [describe(f) for f in new],
+                    ping=True,
+                )
+            )
+        if escalated:
+            post(
+                message(
+                    f"**{len(escalated)} vulnerabilities on public services are now known exploited**",
+                    [describe(f) for f in escalated],
                     ping=True,
                 )
             )
