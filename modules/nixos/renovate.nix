@@ -5,7 +5,29 @@
 # directory, no capabilities); the GitHub token reaches it only as a systemd
 # credential. Per-repo rules live in each repo's renovate.json. When Forgejo
 # lands, repoint `platform` and `endpoint` at it; nothing else changes.
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  # Renovate exits 0 even when it can't update a branch: a failed lock
+  # update or a refused PR shows only as "Errored" on the repo's Dependency
+  # Dashboard, which nobody reads. After every run, post each newly errored
+  # branch to Discord, again weekly while it stays errored, and say so if
+  # the run itself failed.
+  renovateCheck = pkgs.writeShellApplication {
+    name = "renovate-check";
+    runtimeInputs = with pkgs; [
+      curl
+      jq
+      coreutils
+      systemd
+    ];
+    text = builtins.readFile ./renovate-check.sh;
+  };
+in
 {
   sops.secrets.renovate_github_token = {
     format = "yaml";
@@ -45,6 +67,44 @@
       onboarding = false;
       requireConfig = "required";
       detectHostRulesFromEnv = true;
+    };
+  };
+
+  systemd.services.renovate.unitConfig = {
+    OnSuccess = [ "renovate-check.service" ];
+    OnFailure = [ "renovate-check.service" ];
+  };
+
+  systemd.services.renovate-check = {
+    description = "Report Renovate failures and errored branches";
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    environment = {
+      RENOVATE_REPOS = lib.concatStringsSep " " config.services.renovate.settings.repositories;
+      # @ryantherobothead, as in vulnscan
+      PING_USER = "250137556899987468";
+    };
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = lib.getExe renovateCheck;
+      DynamicUser = true;
+      StateDirectory = "renovate-check";
+      LoadCredential = [
+        "github-token:${config.sops.secrets.renovate_github_token.path}"
+        "discord-webhook:${config.sops.secrets.vulnscan_discord_webhook.path}"
+      ];
+      CapabilityBoundingSet = [ "" ];
+      NoNewPrivileges = true;
+      PrivateDevices = true;
+      ProtectHome = true;
+      ProtectSystem = "strict";
+      RestrictAddressFamilies = [
+        "AF_INET"
+        "AF_INET6"
+        # systemctl, for the run's result
+        "AF_UNIX"
+      ];
+      SystemCallArchitectures = "native";
     };
   };
 

@@ -2,3 +2,4 @@ result/*
 result
 .aider*
 recovery-kit*.age
+__pycache__/
