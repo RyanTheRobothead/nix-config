@@ -256,8 +256,17 @@ in
       pkgs.sbomnix
       config.nix.package
     ];
-    environment = scanEnvironment;
+    environment = scanEnvironment // {
+      # Renovate's read:packages token (modules/nixos/renovate.nix), for
+      # pulling Cerberus's images from ghcr.io without being throttled
+      VULNSCAN_GHCR_TOKEN_FILE = "%d/ghcr-token";
+      VULNSCAN_GHCR_USER = "RyanTheRobothead";
+    };
     serviceConfig = scanHardening // {
+      LoadCredential = [
+        scanHardening.LoadCredential
+        "ghcr-token:${config.sops.secrets.renovate_ghcr_token.path}"
+      ];
       Type = "oneshot";
       ExecStart = "${lib.getExe scanner} scan";
       Nice = 19;

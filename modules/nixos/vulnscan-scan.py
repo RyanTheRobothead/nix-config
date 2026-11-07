@@ -70,6 +70,15 @@ TOOL_ENV = {
     # Updated once per run, explicitly, below
     "GRYPE_DB_AUTO_UPDATE": "false",
 }
+# Anonymous pulls of Cerberus's images from ghcr.io get throttled; Syft
+# reads the registry with a read:packages token instead
+GHCR_TOKEN_FILE = os.environ.get("VULNSCAN_GHCR_TOKEN_FILE")
+if GHCR_TOKEN_FILE:
+    TOOL_ENV |= {
+        "SYFT_REGISTRY_AUTH_AUTHORITY": "ghcr.io",
+        "SYFT_REGISTRY_AUTH_USERNAME": os.environ["VULNSCAN_GHCR_USER"],
+        "SYFT_REGISTRY_AUTH_PASSWORD": Path(GHCR_TOKEN_FILE).read_text().strip(),
+    }
 
 
 def now():
@@ -120,6 +129,10 @@ def image_source(c):
         return f"docker-archive:{archive}"
     for ref in c["repoDigests"]:
         if ref.endswith("@" + c["digest"]):
+            # lscr.io only redirects to ghcr.io, with the same digests, and
+            # the token is for ghcr.io
+            if ref.startswith("lscr.io/"):
+                ref = "ghcr.io/" + ref.removeprefix("lscr.io/")
             return f"registry:{ref}"
     return None
 
