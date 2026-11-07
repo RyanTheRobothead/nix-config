@@ -1,4 +1,9 @@
-{ pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
   # === Clipboard ===
@@ -607,11 +612,12 @@ in
     pkgs.jq
     pkgs.lsof
   ]
-  ++ lib.optionals pkgs.stdenv.isLinux [
+  ++ lib.optionals pkgs.stdenv.isLinux [ pkgs.trash-cli ]
+  # copy, pasta and notify have nothing to talk to on a server
+  ++ lib.optionals (pkgs.stdenv.isLinux && !config.local.headless) [
     pkgs.wl-clipboard
     pkgs.xclip
     pkgs.libnotify
-    pkgs.trash-cli
   ];
 
   programs.zsh.initContent = ''

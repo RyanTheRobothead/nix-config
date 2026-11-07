@@ -174,6 +174,18 @@
             ./hosts/sleeperservice
             disko.nixosModules.disko
             sops-nix.nixosModules.sops
+            home-manager.nixosModules.home-manager
+            {
+              # The shell and dotfiles only; toolchains and agents stay off
+              # the internet-facing host (home-manager/home.nix)
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.users.luckierdodge = {
+                imports = [ ./home-manager/core.nix ];
+                home.stateVersion = "26.05";
+                local.headless = true;
+              };
+            }
           ];
         };
       };
