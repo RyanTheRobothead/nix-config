@@ -178,7 +178,9 @@ one track mean a dirty or damaged disc.
 ### Configuration Pattern
 The repository uses a modular approach where:
 1. Each machine has its own configuration file (e.g., `nixos/aegis.nix`, `home-manager/cerberus.nix`)
-2. Common base configurations are in `nixos/configuration.nix` and `home-manager/home.nix`
+2. Common base configurations are in `nixos/configuration.nix` and `home-manager/`: `core.nix` is the shell,
+   editors and dotfiles every host gets (servers set `local.headless` to keep GUI toolkits out), and
+   `home.nix` adds workstation toolchains and agents on top
 3. Machine-specific configurations import and extend the base configurations
 4. Home Manager is integrated into system configurations for seamless user environment management
 
