@@ -15,7 +15,7 @@ let
   # Renovate exits 0 even when it can't update a branch: a failed lock
   # update or a refused PR shows only as "Errored" on the repo's Dependency
   # Dashboard, which nobody reads. After every run, post each newly errored
-  # branch to Discord, again weekly while it stays errored, and say so if
+  # branch to ntfy, again weekly while it stays errored, and say so if
   # the run itself failed.
   renovateCheck = pkgs.writeShellApplication {
     name = "renovate-check";
@@ -81,8 +81,7 @@ in
     after = [ "network-online.target" ];
     environment = {
       RENOVATE_REPOS = lib.concatStringsSep " " config.services.renovate.settings.repositories;
-      # @ryantherobothead, as in vulnscan
-      PING_USER = "250137556899987468";
+      NTFY_URL = "https://ntfy.ryandlewis.dev";
     };
     serviceConfig = {
       Type = "oneshot";
@@ -91,7 +90,7 @@ in
       StateDirectory = "renovate-check";
       LoadCredential = [
         "github-token:${config.sops.secrets.renovate_github_token.path}"
-        "discord-webhook:${config.sops.secrets.vulnscan_discord_webhook.path}"
+        "ntfy-token:${config.sops.secrets.ntfy_token_aegis.path}"
       ];
       CapabilityBoundingSet = [ "" ];
       NoNewPrivileges = true;

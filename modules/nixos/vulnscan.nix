@@ -10,8 +10,8 @@
 # its registry) and sbomnix the system when it changes; Grype rescans every
 # SBOM every 6 hours. Results land in report/report.json and a textfile
 # metric. New Critical or known-exploited findings on public services page
-# Discord at once; the weekly summary lists those, then anything else new; and
-# any vulnscan unit failing says so there too.
+# through ntfy on SleeperService at once; the weekly summary lists those, then
+# anything else new; and any vulnscan unit failing says so there too.
 #
 # Trust: every CA bundle Syft finds in an image, and the host's, is checked
 # against security/ca-denylist.toml along with the runtimes that carry their
@@ -86,9 +86,8 @@ let
     VULNSCAN_SYFT_CONFIG = "${syftConfig}";
     VULNSCAN_CA_DENYLIST = "${../../security/ca-denylist.toml}";
     VULNSCAN_FIX_WATCH = "${../../security/fix-watch.toml}";
-    VULNSCAN_WEBHOOK_FILE = "%d/discord-webhook";
-    # @ryantherobothead, mentioned by pages and summaries
-    VULNSCAN_PING_USER = "250137556899987468";
+    VULNSCAN_NTFY_URL = "https://ntfy.ryandlewis.dev";
+    VULNSCAN_NTFY_TOKEN_FILE = "%d/ntfy-token";
     GRYPE_DB_CACHE_DIR = "/var/cache/vulnscan/grype";
     # Syft unpacks whole images here; immich's are several GB
     TMPDIR = "/var/cache/vulnscan/tmp";
@@ -97,7 +96,7 @@ let
   scanHardening = {
     User = "vulnscan";
     Group = "vulnscan";
-    LoadCredential = "discord-webhook:${config.sops.secrets.vulnscan_discord_webhook.path}";
+    LoadCredential = "ntfy-token:${config.sops.secrets.ntfy_token_aegis.path}";
     CapabilityBoundingSet = [ "" ];
     NoNewPrivileges = true;
     PrivateDevices = true;
@@ -175,11 +174,9 @@ in
     format = "yaml";
     sopsFile = ../../secrets/vulnscan.yaml;
   };
-  # Gatus's alert webhook, shared
-  sops.secrets.vulnscan_discord_webhook = {
-    format = "yaml";
-    sopsFile = ../../secrets/vulnscan-discord.yaml;
-  };
+  # Write-only to ntfy's alerts, security, updates and digest topics
+  # (modules/infra/ntfy.nix); renovate-check uses it too
+  sops.secrets.ntfy_token_aegis.sopsFile = ../../secrets/ntfy.yaml;
 
   programs.ssh.knownHosts.cerberus = {
     hostNames = [
