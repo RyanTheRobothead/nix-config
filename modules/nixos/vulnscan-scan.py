@@ -1,4 +1,4 @@
-"""vulnscan-scan -- SBOMs, Grype rescans, the report and Discord alerts.
+"""vulnscan-scan -- SBOMs, Grype rescans, the report and ntfy alerts.
 
   vulnscan-scan scan              SBOM new digests, rescan everything, alert
   vulnscan-scan summary           post the weekly summary
@@ -18,7 +18,9 @@ runtimes that carry their own trust decisions. New trust findings post once.
 Fix watches (security/fix-watch.toml) post when a fix appears and again when
 every watched container runs it.
 
-Paths, the webhook and who to ping come from VULNSCAN_* env vars set by the
+Alerts go to ntfy on SleeperService: pages and trust findings to `security`,
+summaries to `digest`, unit failures to `alerts`, urgent when known exploited.
+Paths, the ntfy server and its token come from VULNSCAN_* env vars set by the
 NixOS module.
 """
 
@@ -46,11 +48,10 @@ TRUST_FIXTURE = os.environ.get("VULNSCAN_TRUST_FIXTURE")
 SYFT_CONFIG = os.environ.get("VULNSCAN_SYFT_CONFIG")
 CA_DENYLIST = os.environ.get("VULNSCAN_CA_DENYLIST")
 FIX_WATCH = os.environ.get("VULNSCAN_FIX_WATCH")
-WEBHOOK_FILE = os.environ.get("VULNSCAN_WEBHOOK_FILE")
-# The Discord user ID pages and summaries mention
-PING_USER = os.environ.get("VULNSCAN_PING_USER")
-# Write Discord messages to this file instead of posting them
-DRY_RUN = os.environ.get("VULNSCAN_DISCORD_DRY_RUN")
+NTFY_URL = os.environ.get("VULNSCAN_NTFY_URL")
+NTFY_TOKEN_FILE = os.environ.get("VULNSCAN_NTFY_TOKEN_FILE")
+# Write messages to this file instead of posting them
+DRY_RUN = os.environ.get("VULNSCAN_DRY_RUN")
 HOST = os.environ.get("VULNSCAN_HOST", socket.gethostname())
 SYSTEM = os.environ.get("VULNSCAN_SYSTEM", "/run/current-system")
 
@@ -62,7 +63,8 @@ ALERTS = STATE / "report" / "alerts.json"
 METRICS = STATE / "metrics" / "vulnscan.prom"
 
 SEVERITIES = ["Critical", "High", "Medium", "Low", "Negligible", "Unknown"]
-DISCORD_LIMIT = 2000
+# ntfy's message-size-limit, in bytes; longer becomes an attachment
+NTFY_LIMIT = 4096
 TOOL_ENV = {
     **os.environ,
     "SYFT_CHECK_FOR_APP_UPDATE": "false",
@@ -561,42 +563,52 @@ def describe(f):
     return f"{f['host']}/{f['container']}: {f['id']} {f['severity']}{kev} in {pkgs}; {fix}"
 
 
-def mention():
-    return f"<@{PING_USER}> " if PING_USER else ""
+def message(title, lines, footer=""):
+    """An ntfy message that fits, ending with how many lines didn't.
 
-
-def message(title, lines, footer="", ping=False):
-    """A Discord message that fits, ending with how many lines didn't."""
-    out = [(mention() if ping else "") + title]
+    The title's first line is the notification's title; any further lines
+    open the body.
+    """
+    first, _, rest = title.partition("\n")
+    out = [rest] if rest else []
     for i, line in enumerate(lines):
-        rest = len(lines) - i
-        more = f"...and {rest} more in {REPORT}"
-        if len("\n".join(out + ["- " + line, more, footer])) > DISCORD_LIMIT:
+        more = f"...and {len(lines) - i} more in {REPORT}"
+        if len("\n".join(out + ["- " + line, more, footer]).encode()) > NTFY_LIMIT:
             out.append(more)
             break
         out.append("- " + line)
     if footer:
         out.append(footer)
-    return "\n".join(out)
+    return {"title": first.replace("**", ""), "body": "\n".join(out) or first.replace("**", "")}
 
 
-def post(content):
+def post(msg, topic, priority=3, tags=()):
+    """Publish to ntfy. Priority 5 (urgent) breaks through Do Not Disturb."""
+    payload = {
+        "topic": topic,
+        "title": msg["title"],
+        "message": msg["body"],
+        "priority": priority,
+        "tags": list(tags),
+        "markdown": True,
+    }
     if DRY_RUN:
         with open(DRY_RUN, "a") as f:
-            f.write(content + "\n---\n")
+            f.write(json.dumps(payload) + "\n")
         return
-    if not WEBHOOK_FILE or not os.path.exists(WEBHOOK_FILE):
-        log("no Discord webhook configured; message follows")
-        log(content)
+    if not NTFY_URL or not NTFY_TOKEN_FILE or not os.path.exists(NTFY_TOKEN_FILE):
+        log("no ntfy server configured; message follows")
+        log(json.dumps(payload))
         return
-    url = Path(WEBHOOK_FILE).read_text().strip()
-    # Only PING_USER may be mentioned, whatever an image's package names say
-    allowed = {"parse": [], "users": [PING_USER] if PING_USER else []}
-    body = json.dumps({"content": content, "allowed_mentions": allowed})
+    token = Path(NTFY_TOKEN_FILE).read_text().strip()
     req = urllib.request.Request(
-        url,
-        data=body.encode(),
-        headers={"Content-Type": "application/json", "User-Agent": "vulnscan"},
+        NTFY_URL,
+        data=json.dumps(payload).encode(),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+            "User-Agent": "vulnscan",
+        },
     )
     urllib.request.urlopen(req, timeout=30).close()
 
@@ -728,7 +740,7 @@ def scan():
                 "**Vulnerability scanning is live.** Nothing on public services "
                 "is Critical or known exploited."
             )
-        post(message(title, [describe(f) for f in paging]))
+        post(message(title, [describe(f) for f in paging]), "security")
     else:
         new, escalated = pages(state, findings)
         if new:
@@ -736,16 +748,20 @@ def scan():
                 message(
                     f"**{len(new)} new vulnerabilities on public services**",
                     [describe(f) for f in new],
-                    ping=True,
-                )
+                ),
+                "security",
+                5 if any(f["kev"] for f in new) else 4,
+                ["rotating_light"],
             )
         if escalated:
             post(
                 message(
                     f"**{len(escalated)} vulnerabilities on public services are now known exploited**",
                     [describe(f) for f in escalated],
-                    ping=True,
-                )
+                ),
+                "security",
+                5,
+                ["rotating_light"],
             )
     alert_trust(state, trust)
     alert_watches(state, watches)
@@ -771,11 +787,11 @@ def alert_trust(state, trust):
             )
         else:
             title = "**Trust-store check is live.** Nothing trusts a distrusted root."
-        post(message(title, trust_lines(trust)))
+        post(message(title, trust_lines(trust)), "security")
     else:
         new = [t for t in trust if t["key"] not in seen]
         if new:
-            post(message(f"**{len(new)} new trust findings**", trust_lines(new)))
+            post(message(f"**{len(new)} new trust findings**", trust_lines(new)), "security", 4, ["lock"])
     state["trustSeen"] = {t["key"]: seen.get(t["key"], now()) for t in trust}
 
 
@@ -788,14 +804,18 @@ def alert_watches(state, watches):
                 message(
                     f"**{w['name']} is fixed** in every watched container. Now: {w['then']}",
                     [describe_watch(w)],
-                )
+                ),
+                "security",
+                3,
+                ["white_check_mark"],
             )
         elif w["fixKnown"] and not was.get("fixKnown"):
             post(
                 message(
                     f"**{w['name']}: a fix exists.** Waiting for the images to update.",
                     [describe_watch(w)],
-                )
+                ),
+                "security",
             )
         prev[w["name"]] = {"done": w["done"], "fixKnown": w["fixKnown"]}
     # A watch removed from fix-watch.toml takes its state with it
@@ -835,13 +855,13 @@ def summary():
         f"{len(waiting)} fix watches waiting"
     )
     lines = [describe(f) for f in paging] + [describe(f) for f in new if not f["page"]]
-    post(message(title, lines, "; ".join(footer_bits), ping=True))
+    post(message(title, lines, "; ".join(footer_bits)), "digest")
     # Its own message, so the Critical list can't push it off the end
     if trust or unchecked or waiting:
         detail = [describe_watch(w) for w in waiting] + trust_lines(trust)
         if unchecked:
             detail.append("trust not checked: " + ", ".join(unchecked))
-        post(message("**Trust and fix watches**", detail, ping=True))
+        post(message("**Trust and fix watches**", detail), "digest", 2)
     state["lastSummary"] = now()
     state["resolved"] = {}
     write_json(ALERTS, state)
@@ -921,7 +941,12 @@ def nix_trial():
 
 
 def notify_failure(unit):
-    post(f"**vulnscan:** `{unit}` failed on {HOST}; see `journalctl -u {unit}`")
+    post(
+        {"title": f"vulnscan: {unit} failed on {HOST}", "body": f"See `journalctl -u {unit}`."},
+        "alerts",
+        4,
+        ["warning"],
+    )
 
 
 def main():
