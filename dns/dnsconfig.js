@@ -70,10 +70,11 @@ D("ryandlewis.dev", REG_NONE, DnsProvider(DSP_DESEC),
   A("warden", CERBERUS),
 
   // SleeperService (Phase 1): the host itself, the nginx test page, and
-  // Headscale's control server. Explicit names win over the wildcard.
+  // Headscale's control server and ntfy. Explicit names win over the wildcard.
   sleeperservice("sleeperservice"),
   sleeperservice("test"),
   sleeperservice("hs"),
+  sleeperservice("ntfy"),
 
   // Proton Mail. mailsec is Proton's backup MX at 20, per its setup guides
   // (Squarespace had both at 10, which splits delivery between them).
