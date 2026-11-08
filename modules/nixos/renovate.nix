@@ -27,6 +27,20 @@ let
     ];
     text = builtins.readFile ./renovate-check.sh;
   };
+
+  # curl 8.23 strips credentials from CURLINFO_EFFECTIVE_URL, which git 2.54
+  # mistakes for a redirect: it drops the token from the clone URL, so every
+  # push fails with "could not read Username" (curl/curl#23446). Fixed in git
+  # 2.55; drop this once nixpkgs ships it
+  git = pkgs.git.overrideAttrs (old: {
+    patches = old.patches or [ ] ++ [
+      (pkgs.fetchpatch {
+        name = "http-handle-curl-stripping-creds.patch";
+        url = "https://github.com/git/git/commit/76524c2604bceee48481909e7824494498c39a34.patch";
+        hash = "sha256-Pg7QBs0ZAlF3Rc1AakZEyfzIjPwB6s42kBbfji8ktSg=";
+      })
+    ];
+  });
 in
 {
   sops.secrets.renovate_github_token = {
@@ -69,6 +83,9 @@ in
       detectHostRulesFromEnv = true;
     };
   };
+
+  # Ahead of the module's own pkgs.git, which runtimePackages would land behind
+  systemd.services.renovate.path = lib.mkBefore [ git ];
 
   systemd.services.renovate.unitConfig = {
     OnSuccess = [ "renovate-check.service" ];
