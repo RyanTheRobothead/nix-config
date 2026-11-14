@@ -22,6 +22,14 @@ creation_rules:
       - *admin_yubikey_37817094
       - *admin_yubikey_37817095
       - *admin_paper
+  # Linode API token for just provision, which can create and wipe VPSes:
+  # admin keys only, so no host can use it unattended
+  - path_regex: secrets/linode\.yaml$
+    key_groups:
+    - age:
+      - *admin_yubikey_37817094
+      - *admin_yubikey_37817095
+      - *admin_paper
   - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
     - age:

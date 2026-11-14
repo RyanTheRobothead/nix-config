@@ -1,7 +1,7 @@
-# SleeperService's disk, partitioned by nixos-anywhere at install.
+# A Linode's disk, partitioned by nixos-anywhere at install.
 # Linode boots legacy BIOS, so GRUB needs a BIOS boot partition on the GPT
 # disk. The config profile's kernel must be "Direct Disk", which boots this
-# disk's own GRUB rather than Linode's.
+# disk's own GRUB rather than Linode's (hosts/provision-linode.sh sets it).
 {
   disko.devices.disk.main = {
     type = "disk";

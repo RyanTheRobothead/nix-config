@@ -50,22 +50,41 @@ test host="": kill-discord
 deploy host:
     nixos-rebuild switch --flake .#{{ host }} --target-host luckierdodge@{{ host }} --sudo --ask-sudo-password
 
-# Install a host from scratch with nixos-anywhere, wiping its disk. Decrypts
-# its SSH host key (its sops identity) from secrets/<host>/ (YubiKey touch).
-# The target must accept SSH as root, e.g. a fresh Linode's Debian image.
-# Extra arguments go to nixos-anywhere (e.g. --no-reboot).
-provision host ip *args:
+# Rebuild a Linode host from scratch through the Linode API, keeping its
+# addresses; --create makes a new Linode instead. Asks for its label before
+# wiping (--yes skips that). See hosts/provision-linode.sh.
+[doc("Rebuild a Linode host through its API (--create for a new Linode)")]
+provision host *args:
+    nix shell --inputs-from . nixpkgs#linode-cli nixpkgs#jq -c hosts/provision-linode.sh {{ host }} {{ args }}
+
+# Delete a Linode host and its disks, after asking for its label (--yes
+# skips that). Its addresses go back to Linode for good.
+[doc("Delete a Linode host and its disks through the API")]
+deprovision host *args:
+    nix shell --inputs-from . nixpkgs#linode-cli nixpkgs#jq -c hosts/provision-linode.sh {{ host }} --delete {{ args }}
+
+# Install a host with nixos-anywhere, wiping its disk; just provision runs
+# this. Decrypts its SSH host key (its sops identity) from secrets/<host>/
+# (YubiKey touch), if it has one. The target must accept SSH as root, e.g. a
+# fresh Linode's Debian image. Extra arguments go to nixos-anywhere (e.g.
+# --no-reboot).
+[doc("Install a host at <ip> with nixos-anywhere, wiping its disk")]
+install host ip *args:
     #!/usr/bin/env bash
     set -euo pipefail
-    extra=$(mktemp -d)
-    trap 'rm -rf "$extra"' EXIT
-    install -d -m 755 "$extra/etc/ssh"
-    sops decrypt --input-type json --output-type binary \
-      "secrets/{{ host }}/ssh_host_ed25519_key.json" > "$extra/etc/ssh/ssh_host_ed25519_key"
-    chmod 600 "$extra/etc/ssh/ssh_host_ed25519_key"
-    cp "secrets/{{ host }}/ssh_host_ed25519_key.pub" "$extra/etc/ssh/"
+    extra=()
+    if [ -f "secrets/{{ host }}/ssh_host_ed25519_key.json" ]; then
+      dir=$(mktemp -d)
+      trap 'rm -rf "$dir"' EXIT
+      install -d -m 755 "$dir/etc/ssh"
+      sops decrypt --input-type json --output-type binary \
+        "secrets/{{ host }}/ssh_host_ed25519_key.json" > "$dir/etc/ssh/ssh_host_ed25519_key"
+      chmod 600 "$dir/etc/ssh/ssh_host_ed25519_key"
+      cp "secrets/{{ host }}/ssh_host_ed25519_key.pub" "$dir/etc/ssh/"
+      extra=(--extra-files "$dir")
+    fi
     nix run github:nix-community/nixos-anywhere -- \
-      --flake .#{{ host }} --extra-files "$extra" --target-host root@{{ ip }} {{ args }}
+      --flake .#{{ host }} "${extra[@]}" --target-host root@{{ ip }} {{ args }}
 
 # Home Manager Commands
 
