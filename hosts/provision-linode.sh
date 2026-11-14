@@ -53,6 +53,11 @@ LINODE_CLI_TOKEN=$(sops decrypt --extract '["linode_token"]' secrets/linode.yaml
 export LINODE_CLI_TOKEN
 lcli() { linode-cli --json --no-defaults --suppress-warnings "$@"; }
 
+# Before touching anything: the token works and both kernels exist
+for k in linode/grub2 linode/direct-disk; do
+  lcli kernels view "$k" >/dev/null || die "the API has no kernel $k (or the token is refused)"
+done
+
 # Reachable only until nixos-anywhere replaces Debian, so never printed or kept
 root_pass=$(head -c 48 /dev/urandom | base64 | tr -d '/+=\n')
 pubkey=$(cat ~/.ssh/id_ed25519.pub)
