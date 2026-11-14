@@ -14,6 +14,9 @@ with a YubiKey. The same steps rebuild it after a loss.
     so the host joins the tailnet on first boot. SSH is only open on the mesh.
   - `luckierdodge_password_hash`: a yescrypt hash (`mkpasswd -m yescrypt`), for
     sudo and for logging in on the Lish console.
+- `secrets/sleeperservice/headscale.yaml`: Headscale's Noise and DERP private
+  keys (`headscale generate private-key`). Keeping them means a rebuilt server
+  is the same control server to its clients.
 
 An expired auth key only matters at install: once joined, the node stays joined.
 Mint a new one before a rebuild and `sops set` it into `host.yaml`.
@@ -96,3 +99,11 @@ sudo nix store sign -r --key-file /var/lib/nix-signing/aegis-1.sec \
 The host key is the same, so nothing in sops needs re-encrypting and SSH clients
 see the same host key. Remove the old node from the tailnet admin console if it
 still appears.
+
+Headscale comes back with its keys and its users (`headscale-users` creates
+them), but its nodes and pre-auth keys are in `/var/lib/headscale/db.sqlite`.
+Until that database is in a restic set, a rebuild means re-registering every
+Headscale device: `sudo headscale preauthkeys create --user <id>` on the host
+(`headscale users list` shows the ID), then
+`tailscale up --login-server https://hs.ryandlewis.dev --auth-key <key>` on the
+device.

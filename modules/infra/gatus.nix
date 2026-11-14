@@ -104,6 +104,10 @@ let
       "[CERTIFICATE_EXPIRATION] > 336h"
     ])
     (http "sleeperservice" "nginx-test" "https://test.ryandlewis.dev/")
+    (check "sleeperservice" "headscale" "https://hs.ryandlewis.dev/health" [
+      "[STATUS] == 200"
+      "[CERTIFICATE_EXPIRATION] > 336h"
+    ])
   ];
 in
 {
