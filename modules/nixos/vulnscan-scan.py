@@ -19,7 +19,8 @@ Fix watches (security/fix-watch.toml) post when a fix appears and again when
 every watched container runs it.
 
 Alerts go to ntfy on SleeperService: pages and trust findings to `security`,
-summaries to `digest`, unit failures to `alerts`, urgent when known exploited.
+summaries to `digest`, unit failures and containers left a day without an
+SBOM to `alerts`, urgent when known exploited.
 Paths, the ntfy server and its token come from VULNSCAN_* env vars set by the
 NixOS module.
 """
@@ -81,6 +82,13 @@ if GHCR_TOKEN_FILE:
         "SYFT_REGISTRY_AUTH_USERNAME": os.environ["VULNSCAN_GHCR_USER"],
         "SYFT_REGISTRY_AUTH_PASSWORD": Path(GHCR_TOKEN_FILE).read_text().strip(),
     }
+# Seconds between Syft attempts when the registry throttles. ghcr.io's
+# retry-after is a meaningless few microseconds, so wait our own amount
+SYFT_RETRY_DELAYS = [30, 120]
+# An image without an SBOM alerts once it has gone this long, then daily.
+# Throttling left two of Cerberus's images unscanned for 44 hours from
+# 2026-11-12 with only a journal warning; the weekly summary was next
+UNSCANNED_ALERT_AFTER = 24 * 3600
 
 
 def now():
@@ -167,7 +175,12 @@ def syft(source, hexd):
     if SYFT_CONFIG:
         cmd += ["-c", SYFT_CONFIG, "-o", f"syft-json={files}"]
     # Not -q: that hides the reason when a pull fails
-    run = subprocess.run(cmd, capture_output=True, text=True, env=TOOL_ENV)
+    for delay in [*SYFT_RETRY_DELAYS, None]:
+        run = subprocess.run(cmd, capture_output=True, text=True, env=TOOL_ENV)
+        if run.returncode == 0 or delay is None or "TOOMANYREQUESTS" not in run.stderr:
+            break
+        log(f"throttled pulling {source}; retrying in {delay}s")
+        time.sleep(delay)
     if run.returncode != 0:
         tmp.unlink(missing_ok=True)
         files.unlink(missing_ok=True)
@@ -633,6 +646,9 @@ def write_metrics(report):
         "# HELP vulnscan_fix_watch_waiting Fix watches still waiting for a fixed image",
         "# TYPE vulnscan_fix_watch_waiting gauge",
         f"vulnscan_fix_watch_waiting {sum(not w['done'] for w in report['watches'])}",
+        "# HELP vulnscan_unscanned_containers Containers whose image has no SBOM, so no findings",
+        "# TYPE vulnscan_unscanned_containers gauge",
+        f"vulnscan_unscanned_containers {len(report['unscanned'])}",
         "# HELP vulnscan_last_scan_timestamp_seconds When the last scan finished",
         "# TYPE vulnscan_last_scan_timestamp_seconds gauge",
         f"vulnscan_last_scan_timestamp_seconds {int(time.time())}",
@@ -765,6 +781,7 @@ def scan():
             )
     alert_trust(state, trust)
     alert_watches(state, watches)
+    alert_unscanned(state, unscanned)
     for key in set(state["seen"]) - set(current):
         state["resolved"][key] = now()
         del state["seen"][key]
@@ -821,6 +838,43 @@ def alert_watches(state, watches):
     # A watch removed from fix-watch.toml takes its state with it
     for name in set(prev) - {w["name"] for w in watches}:
         del prev[name]
+
+
+def alert_unscanned(state, unscanned):
+    """Alert on containers that have gone a day without an SBOM, then daily
+    while they stay that way.
+
+    state["unscanned"] holds when each was first seen unscanned and when it
+    last alerted. One that gets scanned drops out, so it starts over if it
+    is ever unscanned again.
+    """
+    prev = state.get("unscanned", {})
+    cur = {name: prev.get(name, {"since": now()}) for name in unscanned}
+    t = time.time()
+
+    def overdue(stamp):
+        return t - datetime.fromisoformat(stamp).timestamp() >= UNSCANNED_ALERT_AFTER
+
+    due = sorted(
+        name
+        for name, u in cur.items()
+        if overdue(u["since"]) and overdue(u.get("alerted", u["since"]))
+    )
+    if due:
+        post(
+            message(
+                f"**{len(due)} containers unscanned for over a day**\n"
+                "No SBOM, so their vulnerabilities aren't being checked.",
+                [f"{name}, since {cur[name]['since']}" for name in due],
+                "Syft's errors are in `journalctl -u vulnscan-scan`.",
+            ),
+            "alerts",
+            4,
+            ["warning"],
+        )
+        for name in due:
+            cur[name]["alerted"] = now()
+    state["unscanned"] = cur
 
 
 def summary():
