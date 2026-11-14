@@ -122,9 +122,10 @@ see the same host key. Remove the old node from the tailnet admin console if it
 still appears.
 
 Headscale comes back with its keys and its users (`headscale-users` creates
-them), but its nodes and pre-auth keys are in `/var/lib/headscale/db.sqlite`.
-Until that database is in a restic set, a rebuild means re-registering every
-Headscale device: `sudo headscale preauthkeys create --user <id>` on the host
+them). Its nodes and pre-auth keys are in `/var/lib/headscale/db.sqlite`, which
+is backed up nightly: restore it as in `restore.md` (SleeperService) and the
+devices reconnect without logging in again. Without a backup, re-register each
+device: `sudo headscale preauthkeys create --user <id>` on the host
 (`headscale users list` shows the ID), then
 `tailscale up --login-server https://hs.ryandlewis.dev --auth-key <key>` on the
 device.
