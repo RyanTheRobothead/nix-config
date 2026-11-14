@@ -66,6 +66,12 @@ in
       derp = {
         server = {
           enabled = true;
+          # Unset, the NixOS config leaves these empty and the relay is
+          # advertised as region 0, which Tailscale reads as "no region".
+          # 900-999 are clear of Tailscale's own region IDs.
+          region_id = 999;
+          region_code = "sleeperservice";
+          region_name = "SleeperService";
           private_key_path = config.sops.secrets.headscale_derp_key.path;
           # Both address families, since the relay advertises both
           stun_listen_addr = ":3478";
