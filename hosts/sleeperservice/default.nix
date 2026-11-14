@@ -11,6 +11,7 @@
     ../../modules/infra/ntfy.nix
     ../../modules/infra/gatus.nix
     ../../modules/infra/headscale.nix
+    ../../modules/infra/backup.nix
   ];
 
   networking.hostName = "sleeperservice";
