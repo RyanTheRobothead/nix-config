@@ -1,0 +1,7 @@
+{
+  "label": "NervousEnergy",
+  "region": "us-ord",
+  "type": "g6-standard-1",
+  "image": "linode/debian13",
+  "ready": "ssh"
+}

@@ -1,0 +1,7 @@
+{
+  "label": "SleeperService",
+  "region": "us-ord",
+  "type": "g6-standard-2",
+  "image": "linode/debian13",
+  "ready": "tailnet"
+}

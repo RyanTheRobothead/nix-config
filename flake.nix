@@ -166,6 +166,15 @@
             ];
           };
 
+        # Throwaway Linode for rehearsing just provision
+        nervousenergy = nixpkgs.lib.nixosSystem {
+          modules = [
+            { nixpkgs.hostPlatform = "x86_64-linux"; }
+            ./hosts/nervousenergy
+            disko.nixosModules.disko
+          ];
+        };
+
         # Linode VPS, installed with nixos-anywhere (just provision)
         sleeperservice = nixpkgs.lib.nixosSystem {
           specialArgs = { inherit inputs outputs; };
