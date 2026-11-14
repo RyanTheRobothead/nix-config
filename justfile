@@ -57,6 +57,12 @@ deploy host:
 provision host *args:
     nix shell --inputs-from . nixpkgs#linode-cli nixpkgs#jq -c hosts/provision-linode.sh {{ host }} {{ args }}
 
+# Delete a Linode host and its disks, after asking for its label (--yes
+# skips that). Its addresses go back to Linode for good.
+[doc("Delete a Linode host and its disks through the API")]
+deprovision host *args:
+    nix shell --inputs-from . nixpkgs#linode-cli nixpkgs#jq -c hosts/provision-linode.sh {{ host }} --delete {{ args }}
+
 # Install a host with nixos-anywhere, wiping its disk; just provision runs
 # this. Decrypts its SSH host key (its sops identity) from secrets/<host>/
 # (YubiKey touch), if it has one. The target must accept SSH as root, e.g. a

@@ -65,7 +65,12 @@ Remove the old node, then rename the new one.
 To rehearse, use NervousEnergy (`hosts/nervousenergy/`): the same Linode
 profile with no secrets, tailnet or services, on a 2 GB plan billed hourly.
 `just provision nervousenergy --create`, then `just provision nervousenergy`
-to rebuild it, then delete the Linode.
+to rebuild it, then `just deprovision nervousenergy` to delete it. Deleting
+asks for the label too, and the addresses go back to Linode for good, so never
+deprovision SleeperService to rebuild it: `just provision` keeps them.
+
+Run these from a terminal, not Claude Code's `!`: the YubiKey PIN prompt and
+the label confirmation need a TTY.
 
 If the boot fails, watch Lish (Weblish or
 `ssh -t <user>@lish-<region>.linode.com`) and log in as luckierdodge. The

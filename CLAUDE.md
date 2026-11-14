@@ -26,6 +26,7 @@ just switch <host>           # NixOS hosts: aegis
 just deploy <host>           # Remote hosts over the tailnet: sleeperservice
 just provision <host>        # Rebuild a Linode host from scratch via its API (docs/runbooks/rebuild-host.md)
 just install <host> <ip>     # The nixos-anywhere step alone, onto any machine accepting root SSH
+just deprovision <host>      # Delete a Linode host and its disks (e.g. after a nervousenergy rehearsal)
 just switch-hm <host>        # Home Manager: luckierdodge@cerberus
 
 # Build without switching

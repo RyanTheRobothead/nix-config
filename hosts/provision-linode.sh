@@ -2,6 +2,7 @@
 # Install a Linode host from scratch through the Linode API: no Cloud Manager.
 #
 #   just provision <host> [--create] [--yes]
+#   just deprovision <host> [--yes]
 #
 # By default, rebuilds the existing Linode labelled as in hosts/<host>/linode.json,
 # after showing it and asking for its label. Its ID and addresses stay, so DNS
@@ -9,6 +10,9 @@
 # instead, for when the old one is gone: it refuses if the label is taken, and
 # prints the new addresses for dns/dnsconfig.js and modules/infra/headscale.nix.
 # --yes skips the confirmation.
+#
+# just deprovision (--delete here) deletes the Linode and its disks, after the
+# same confirmation. Its addresses go back to Linode for good.
 #
 # Either way: Debian from the image (a bare filesystem, so it only boots in
 # Linode's GRUB 2 mode), just install --no-reboot (nixos-anywhere), shut down,
@@ -30,10 +34,12 @@ host=${1:-}
 [ -n "$host" ] || usage
 shift
 create=0
+delete=0
 yes=0
 for arg; do
   case $arg in
   --create) create=1 ;;
+  --delete) delete=1 ;;
   --yes) yes=1 ;;
   *) usage ;;
   esac
@@ -90,6 +96,28 @@ wait_debian() {
 found=$(lcli linodes list --label "$label" | jq --arg l "$label" '[.[] | select(.label == $l)]')
 n=$(jq length <<<"$found")
 
+# Show the one Linode with this label, and have its label typed back
+confirm() {
+  jq -r '.[0] | "Linode \(.id): \(.label), \(.type) in \(.region), \(.status)\n  \(.ipv4 | join(" ")) \(.ipv6)"' <<<"$found"
+  if [ "$yes" != 1 ]; then
+    read -rp "$1 Type its label to go on: " answer
+    [ "$answer" = "$label" ] || die "not confirmed"
+  fi
+}
+
+if [ "$delete" = 1 ]; then
+  [ "$create" = 0 ] || usage
+  [ "$n" = 1 ] || die "expected one Linode labelled $label, found $n"
+  id=$(jq -er '.[0].id' <<<"$found")
+  confirm "This deletes it and its disks for good, and its addresses go back to Linode."
+  lcli linodes delete "$id" >/dev/null
+  echo "Deleted $label (Linode $id)."
+  if [ "$ready" = tailnet ]; then
+    echo "Remove its node from the tailnet too, and its addresses from dns/dnsconfig.js."
+  fi
+  exit 0
+fi
+
 if [ "$create" = 1 ]; then
   [ "$n" = 0 ] || die "a Linode labelled $label exists ($(jq -r '.[0].id' <<<"$found")); rebuild it instead, or delete it first"
   echo "Creating $label: $type in $region from $image"
@@ -99,11 +127,7 @@ if [ "$create" = 1 ]; then
 else
   [ "$n" = 1 ] || die "expected one Linode labelled $label, found $n (--create makes one)"
   id=$(jq -er '.[0].id' <<<"$found")
-  jq -r '.[0] | "Linode \(.id): \(.label), \(.type) in \(.region), \(.status)\n  \(.ipv4 | join(" ")) \(.ipv6)"' <<<"$found"
-  if [ "$yes" != 1 ]; then
-    read -rp "This wipes it and reinstalls $host. Type its label to go on: " answer
-    [ "$answer" = "$label" ] || die "not confirmed"
-  fi
+  confirm "This wipes it and reinstalls $host."
   # An installed host boots Direct Disk, which can't boot the image's bare
   # filesystem. Back to GRUB 2 and the helpers' defaults first, in case the
   # rebuild keeps the profile; it applies at the rebuild's own boot.
