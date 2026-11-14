@@ -98,7 +98,7 @@ n=$(jq length <<<"$found")
 
 # Show the one Linode with this label, and have its label typed back
 confirm() {
-  jq -r '.[0] | "Linode \(.id): \(.label), \(.type) in \(.region), \(.status)\n  \(.ipv4 | join(" ")) \(.ipv6)"' <<<"$found"
+  jq -r '.[0] | "Linode \(.id): \(.label), \(.type) in \(.region), \(.status)\n  \(.ipv4 | join(" ")) \(.ipv6 | split("/")[0])"' <<<"$found"
   if [ "$yes" != 1 ]; then
     read -rp "$1 Type its label to go on: " answer
     [ "$answer" = "$label" ] || die "not confirmed"
