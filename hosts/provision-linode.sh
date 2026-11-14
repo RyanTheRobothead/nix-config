@@ -104,6 +104,15 @@ else
     read -rp "This wipes it and reinstalls $host. Type its label to go on: " answer
     [ "$answer" = "$label" ] || die "not confirmed"
   fi
+  # An installed host boots Direct Disk, which can't boot the image's bare
+  # filesystem. Back to GRUB 2 and the helpers' defaults first, in case the
+  # rebuild keeps the profile; it applies at the rebuild's own boot.
+  configs=$(lcli linodes configs-list "$id")
+  [ "$(jq length <<<"$configs")" = 1 ] || die "expected one config profile on $id"
+  lcli linodes config-update "$id" "$(jq -er '.[0].id' <<<"$configs")" \
+    --kernel linode/grub2 --helpers.distro true --helpers.modules_dep true \
+    --helpers.network true --helpers.devtmpfs_automount true \
+    --helpers.updatedb_disabled true >/dev/null
   echo "Rebuilding $label from $image"
   lcli linodes rebuild "$id" --image "$image" --root_pass "$root_pass" \
     --authorized_keys "$pubkey" --booted true >/dev/null
