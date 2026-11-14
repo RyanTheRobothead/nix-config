@@ -67,8 +67,9 @@ in
         server = {
           enabled = true;
           private_key_path = config.sops.secrets.headscale_derp_key.path;
-          stun_listen_addr = "0.0.0.0:3478";
-          # Linode's addresses, as in dns/dnsconfig.js
+          # Both address families, since the relay advertises both
+          stun_listen_addr = ":3478";
+          # Linode's addresses, as in dns/dnsconfig.js; a new Linode changes both
           ipv4 = "172.234.194.242";
           ipv6 = "2600:3c06::2000:a7ff:fe63:bba7";
         };
@@ -133,9 +134,13 @@ in
       # The control protocol upgrades with POST and "Upgrade:
       # tailscale-control-protocol"; NixOS's upgrade map passes any value
       proxyWebsockets = true;
+      # Map long-polls and DERP relays idle between keepalives every 50-59s
+      # (hscontrol/poll.go), right at nginx's default 60s timeout
       extraConfig = ''
         proxy_buffering off;
         proxy_set_header True-Client-IP $remote_addr;
+        proxy_read_timeout 10m;
+        proxy_send_timeout 10m;
       '';
     };
   };

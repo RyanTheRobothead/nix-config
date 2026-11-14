@@ -107,3 +107,6 @@ Headscale device: `sudo headscale preauthkeys create --user <id>` on the host
 (`headscale users list` shows the ID), then
 `tailscale up --login-server https://hs.ryandlewis.dev --auth-key <key>` on the
 device.
+
+A rebuild onto a new Linode gets new public addresses. Change them in both
+`dns/dnsconfig.js` and the DERP `ipv4`/`ipv6` in `modules/infra/headscale.nix`.
