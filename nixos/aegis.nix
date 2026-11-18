@@ -64,7 +64,8 @@
   programs.ssh.knownHosts.sleeperservice = {
     hostNames = [
       "sleeperservice"
-      "100.100.75.35"
+      # Stable across rebuilds, unlike its tailnet address
+      "sleeperservice.tailf41b8.ts.net"
     ];
     publicKeyFile = ../secrets/sleeperservice/ssh_host_ed25519_key.pub;
   };
