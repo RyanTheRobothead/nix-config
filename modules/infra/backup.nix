@@ -103,7 +103,8 @@ in
   # minutes, and a rebuild doesn't spend one of Let's Encrypt's weekly
   # duplicate certificates. .lego/accounts exists only once acme-setup has
   # run, so this is skipped on every later boot. acme-setup re-owns what it
-  # restores (the old system's acme UID may differ), and the certificate is
+  # restores (the old system's acme UID may differ) except .minica, its
+  # self-signed CA, which is left out to be regenerated; the certificate is
   # renewed as usual if it's near expiry. A failed restore only logs: the
   # host then orders a new certificate, as before. No ordering after
   # network-online.target, which would hold nginx back ~8 s on every boot
@@ -130,7 +131,8 @@ in
       # Up to ~3 minutes while DHCP and DNS come up
       for try in $(seq 18); do
         if restic restore latest --host ${config.networking.hostName} \
-          --include /var/lib/acme --target "$t"; then
+          --include /var/lib/acme --exclude /var/lib/acme/.minica \
+          --target "$t"; then
           if [ -d "$t/var/lib/acme/.lego/accounts" ]; then
             install -d -m 755 /var/lib/acme
             cp -a "$t/var/lib/acme/." /var/lib/acme/
