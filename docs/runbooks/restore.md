@@ -105,6 +105,7 @@ with Gatus stopped; its history is the only thing lost without it.
 
 | Date | Snapshot | Result |
 | --- | --- | --- |
+| 2026-11-17 | `c1c512f6` | Pass. First snapshot, restored in full to `/var/tmp`. Both databases `ok`; Headscale has 1 node (same as live) and user `luckierdodge`, Gatus 4,248 results; `/var/lib/acme` identical to live. |
 
 ## Gotchas
 
