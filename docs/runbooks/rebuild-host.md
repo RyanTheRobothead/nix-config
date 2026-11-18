@@ -121,6 +121,15 @@ The host key is the same, so nothing in sops needs re-encrypting and SSH clients
 see the same host key. Remove the old node from the tailnet admin console if it
 still appears.
 
+The ACME account and certificate come back on their own: on first boot,
+`acme-restore` (`modules/infra/backup.nix`) restores `/var/lib/acme` from the
+latest snapshot before `acme-setup` and nginx start, so the host serves the real
+certificate immediately and doesn't order a new one. `journalctl -u acme-restore`
+says which happened. If it couldn't restore (no snapshot yet, B2 unreachable),
+the host orders a new certificate: nginx serves a self-signed one until DNS-01
+validation finishes, about 10 minutes, and each new order counts against Let's
+Encrypt's 5 duplicate certificates a week.
+
 Headscale comes back with its keys and its users (`headscale-users` creates
 them). Its nodes and pre-auth keys are in `/var/lib/headscale/db.sqlite`, which
 is backed up nightly: restore it as in `restore.md` (SleeperService) and the
