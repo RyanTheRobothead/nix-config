@@ -100,12 +100,31 @@ sudo systemctl start headscale
 sudo headscale nodes list
 ```
 
-Gatus's database goes back the same way, to `/var/lib/private/gatus/data.db`
-with Gatus stopped; its history is the only thing lost without it.
+Gatus's database goes back the same way, with Gatus stopped; its history is
+the only thing lost without it. Gatus is a DynamicUser, so there's no fixed
+owner to install as: give the file its directory's owner. systemd only fixes
+ownership under `/var/lib/private/gatus` when the directory itself is wrong,
+so a root-owned `data.db` stays root's and Gatus panics with "unable to open
+database file (14)".
+
+```bash
+sudo restic-backblaze restore <snapshot> --target /var/tmp/restore \
+  --include /var/lib/backup-staging/gatus.sqlite
+sudo sqlite3 /var/tmp/restore/var/lib/backup-staging/gatus.sqlite 'PRAGMA integrity_check'
+sudo systemctl stop gatus
+sudo rm -f /var/lib/private/gatus/data.db-wal /var/lib/private/gatus/data.db-shm
+sudo install -m 600 /var/tmp/restore/var/lib/backup-staging/gatus.sqlite /var/lib/private/gatus/data.db
+sudo chown --reference=/var/lib/private/gatus /var/lib/private/gatus/data.db
+sudo systemctl start gatus
+```
+
+After a rebuild, the newest snapshot holds the fresh, empty databases: restore
+the last one from before it by ID (`restic-backblaze snapshots`), not `latest`.
 
 | Date | Snapshot | Result |
 | --- | --- | --- |
 | 2026-11-17 | `c1c512f6` | Pass. First snapshot, restored in full to `/var/tmp`. Both databases `ok`; Headscale has 1 node (same as live) and user `luckierdodge`, Gatus 4,248 results; `/var/lib/acme` identical to live. |
+| 2026-11-17 | `c1c512f6` | Pass, into production. Gatus's history put back on the rebuilt host: back to 17:35 CST, losing 19:13 to 21:18. The first try left `data.db` owned by root and Gatus panicked ("unable to open database file (14)") until it was given its directory's owner; the steps above now do that. |
 
 ## Gotchas
 
