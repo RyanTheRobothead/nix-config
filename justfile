@@ -55,13 +55,13 @@ deploy host:
 # wiping (--yes skips that). See hosts/provision-linode.sh.
 [doc("Rebuild a Linode host through its API (--create for a new Linode)")]
 provision host *args:
-    nix shell --inputs-from . nixpkgs#linode-cli nixpkgs#jq -c hosts/provision-linode.sh {{ host }} {{ args }}
+    nix shell --inputs-from . nixpkgs#linode-cli nixpkgs#jq nixpkgs#curl -c hosts/provision-linode.sh {{ host }} {{ args }}
 
 # Delete a Linode host and its disks, after asking for its label (--yes
 # skips that). Its addresses go back to Linode for good.
 [doc("Delete a Linode host and its disks through the API")]
 deprovision host *args:
-    nix shell --inputs-from . nixpkgs#linode-cli nixpkgs#jq -c hosts/provision-linode.sh {{ host }} --delete {{ args }}
+    nix shell --inputs-from . nixpkgs#linode-cli nixpkgs#jq nixpkgs#curl -c hosts/provision-linode.sh {{ host }} --delete {{ args }}
 
 # Install a host with nixos-anywhere, wiping its disk; just provision runs
 # this. Decrypts its SSH host key (its sops identity) from secrets/<host>/

@@ -71,6 +71,19 @@ pubkey=$(cat ~/.ssh/id_ed25519.pub)
 # Throwaway SSH options: a rebuilt Linode keeps its address but not its key
 ssh_new=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes)
 
+# The boot helpers to set on a config profile. A Linode on Linode Interfaces
+# (SleeperService, made after they became the default) refuses the network
+# helper outright; one on legacy config interfaces (NervousEnergy) takes it.
+# linode-cli 5.56's spec predates interface_generation, so ask the API.
+helpers() {
+  local on=$1 gen
+  gen=$(curl -fsS -H @<(printf 'Authorization: Bearer %s\n' "$LINODE_CLI_TOKEN") \
+    "https://api.linode.com/v4/linode/instances/$id" | jq -r '.interface_generation // "legacy_config"')
+  helper_args=(--helpers.distro "$on" --helpers.modules_dep "$on"
+    --helpers.devtmpfs_automount "$on" --helpers.updatedb_disabled true)
+  [ "$gen" = linode ] || helper_args+=(--helpers.network "$on")
+}
+
 wait_status() {
   local s=""
   for _ in $(seq 120); do
@@ -133,10 +146,9 @@ else
   # rebuild keeps the profile; it applies at the rebuild's own boot.
   configs=$(lcli linodes configs-list "$id")
   [ "$(jq length <<<"$configs")" = 1 ] || die "expected one config profile on $id"
+  helpers true
   lcli linodes config-update "$id" "$(jq -er '.[0].id' <<<"$configs")" \
-    --kernel linode/grub2 --helpers.distro true --helpers.modules_dep true \
-    --helpers.network true --helpers.devtmpfs_automount true \
-    --helpers.updatedb_disabled true >/dev/null
+    --kernel linode/grub2 "${helper_args[@]}" >/dev/null
   echo "Rebuilding $label from $image"
   lcli linodes rebuild "$id" --image "$image" --root_pass "$root_pass" \
     --authorized_keys "$pubkey" --booted true >/dev/null
@@ -161,10 +173,9 @@ echo "Switching $label to Direct Disk"
 lcli linodes shutdown "$id" >/dev/null
 wait_status "$id" offline
 # Every helper off: NixOS declares its own network and filesystems
+helpers false
 lcli linodes config-update "$id" "$config" --kernel linode/direct-disk \
-  --root_device /dev/sda --helpers.distro false --helpers.modules_dep false \
-  --helpers.network false --helpers.devtmpfs_automount false \
-  --helpers.updatedb_disabled true >/dev/null
+  --root_device /dev/sda "${helper_args[@]}" >/dev/null
 booted=$(date +%s)
 lcli linodes boot "$id" --config_id "$config" >/dev/null
 wait_status "$id" running
