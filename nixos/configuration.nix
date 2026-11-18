@@ -106,9 +106,9 @@
     xkb.variant = "";
   };
 
-  # Enable CUPS to print documents.
+  # Enable CUPS to print documents. No vendor drivers: network printers are
+  # found over Avahi and driven driverless (IPP Everywhere / AirPrint).
   services.printing.enable = true;
-  services.printing.drivers = [ pkgs.hplipWithPlugin ];
   services.avahi = {
     enable = true;
     nssmdns4 = true;
