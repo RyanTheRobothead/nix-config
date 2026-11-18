@@ -1,4 +1,4 @@
-# Restoring Aegis from backup
+# Restoring from backup
 
 Aegis backs up to Backblaze B2 with restic (`services.restic.backups.backblaze` in
 `nixos/aegis.nix`). Last tested 2026-10-17: Vaultwarden restored from B2 intact.
@@ -68,6 +68,43 @@ sudo bash docs/runbooks/restore-test.sh
 | --- | --- | --- |
 | 2026-10-17 | `1014ab16` | Pass. `flake.nix` matched. Vaultwarden from the 2026-10-10 tarball: integrity `ok`, 2 users and 462 items, same as live. Streaming took 87 minutes. |
 | 2026-10-16 | `9eb2080b` | Fail: no volume data in B2. Since 2026-01-31 restic had been given the `~/aegis-backup` symlink, which it stores as a link without its contents. Fixed in `aa8d644`. |
+
+## SleeperService
+
+SleeperService has its own repository, `b2:ryan-the-robothead-sleeperservice-backup`
+(`modules/infra/backup.nix`), with the same schedule, checks and wrapper name,
+so `sudo restic-backblaze ...` works there too. Its password is in
+`secrets/sleeperservice/restic.yaml`, which either YubiKey or the paper identity
+decrypts; the recovery kit's break-glass key covers Aegis's repository only.
+
+| Data | Where it lives | In the snapshot |
+| --- | --- | --- |
+| Headscale nodes and pre-auth keys | `/var/lib/headscale/db.sqlite` | `/var/lib/backup-staging/headscale.sqlite`, copied with `sqlite3 .backup` before each run |
+| Gatus history | `/var/lib/private/gatus/data.db` | `/var/lib/backup-staging/gatus.sqlite`, the same way |
+| ACME account and certificates | `/var/lib/acme` | as is |
+
+Headscale's keys and users, ntfy's users and tokens, and everything else come
+from the flake and sops. A failed backup or check posts to ntfy's `alerts` topic.
+
+To put Headscale's database back, on the host:
+
+```bash
+sudo restic-backblaze restore latest --target /var/tmp/restore \
+  --include /var/lib/backup-staging/headscale.sqlite
+sudo sqlite3 /var/tmp/restore/var/lib/backup-staging/headscale.sqlite 'PRAGMA integrity_check'
+sudo systemctl stop headscale
+sudo rm -f /var/lib/headscale/db.sqlite-wal /var/lib/headscale/db.sqlite-shm
+sudo install -o headscale -g headscale -m 640 \
+  /var/tmp/restore/var/lib/backup-staging/headscale.sqlite /var/lib/headscale/db.sqlite
+sudo systemctl start headscale
+sudo headscale nodes list
+```
+
+Gatus's database goes back the same way, to `/var/lib/private/gatus/data.db`
+with Gatus stopped; its history is the only thing lost without it.
+
+| Date | Snapshot | Result |
+| --- | --- | --- |
 
 ## Gotchas
 
