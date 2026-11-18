@@ -131,9 +131,10 @@ in
       # Up to ~3 minutes while DHCP and DNS come up
       for try in $(seq 18); do
         if restic restore latest --host ${config.networking.hostName} \
-          --include /var/lib/acme --exclude /var/lib/acme/.minica \
-          --target "$t"; then
+          --include /var/lib/acme --target "$t"; then
           if [ -d "$t/var/lib/acme/.lego/accounts" ]; then
+            # restic restore refuses --exclude beside --include
+            rm -rf "$t/var/lib/acme/.minica"
             install -d -m 755 /var/lib/acme
             cp -a "$t/var/lib/acme/." /var/lib/acme/
             echo "Restored /var/lib/acme from the latest snapshot"
