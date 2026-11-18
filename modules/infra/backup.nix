@@ -97,6 +97,58 @@ in
     };
   };
 
+  # On a fresh install (just provision), put the ACME account and certificate
+  # back before acme-setup and nginx start, so the host serves the real
+  # certificate from its first boot instead of a self-signed one for ~10
+  # minutes, and a rebuild doesn't spend one of Let's Encrypt's weekly
+  # duplicate certificates. .lego/accounts exists only once acme-setup has
+  # run, so this is skipped on every later boot. acme-setup re-owns what it
+  # restores (the old system's acme UID may differ) except .minica, its
+  # self-signed CA, which is left out to be regenerated; the certificate is
+  # renewed as usual if it's near expiry. A failed restore only logs: the
+  # host then orders a new certificate, as before. No ordering after
+  # network-online.target, which would hold nginx back ~8 s on every boot
+  # even when this is skipped; it retries until B2 answers instead.
+  systemd.services.acme-restore = {
+    description = "Restore ACME state from restic on a fresh install";
+    wantedBy = [ "acme-setup.service" ];
+    before = [ "acme-setup.service" ];
+    unitConfig.ConditionPathExists = "!/var/lib/acme/.lego/accounts";
+    environment = removeAttrs config.systemd.services.restic-backups-backblaze.environment [ "PATH" ];
+    path = [ config.services.restic.backups.backblaze.package ];
+    serviceConfig = {
+      Type = "oneshot";
+      EnvironmentFile = config.sops.templates."restic-env".path;
+      CacheDirectory = "restic-backups-backblaze";
+      CacheDirectoryMode = "0700";
+      TimeoutStartSec = "5min";
+    };
+    # Restored beside /var/lib/acme, not over /, so restic never touches
+    # /var or /var/lib's own metadata
+    script = ''
+      t=$(mktemp -d /var/lib/acme-restore.XXXXXX)
+      trap 'rm -rf "$t"' EXIT
+      # Up to ~3 minutes while DHCP and DNS come up
+      for try in $(seq 18); do
+        if restic restore latest --host ${config.networking.hostName} \
+          --include /var/lib/acme --exclude /var/lib/acme/.minica \
+          --target "$t"; then
+          if [ -d "$t/var/lib/acme/.lego/accounts" ]; then
+            install -d -m 755 /var/lib/acme
+            cp -a "$t/var/lib/acme/." /var/lib/acme/
+            echo "Restored /var/lib/acme from the latest snapshot"
+          else
+            echo "The latest snapshot has no ACME account; ordering anew"
+          fi
+          exit 0
+        fi
+        echo "Restore attempt $try failed"
+        sleep 10
+      done
+      echo "No ACME state restored; ordering a new certificate"
+    '';
+  };
+
   # A failed backup or check posts to ntfy here, with Gatus's token (it
   # can only write to alerts). Nothing else would notice.
   systemd.services.restic-backups-backblaze.onFailure = [ "notify-failure@%n.service" ];

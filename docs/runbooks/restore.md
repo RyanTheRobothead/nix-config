@@ -81,7 +81,7 @@ decrypts; the recovery kit's break-glass key covers Aegis's repository only.
 | --- | --- | --- |
 | Headscale nodes and pre-auth keys | `/var/lib/headscale/db.sqlite` | `/var/lib/backup-staging/headscale.sqlite`, copied with `sqlite3 .backup` before each run |
 | Gatus history | `/var/lib/private/gatus/data.db` | `/var/lib/backup-staging/gatus.sqlite`, the same way |
-| ACME account and certificates | `/var/lib/acme` | as is |
+| ACME account and certificates | `/var/lib/acme` | as is; `acme-restore` puts it back on a fresh install before nginx starts |
 
 Headscale's keys and users, ntfy's users and tokens, and everything else come
 from the flake and sops. A failed backup or check posts to ntfy's `alerts` topic.
