@@ -213,8 +213,11 @@
               inherit inputs outputs;
               nixpkgs-unstable = nixpkgsUnstableWithUnfree;
             };
+            # The shell and dotfiles only, as on SleeperService: cerberus has
+            # 2 GiB of RAM and the workstation profile (home-manager/home.nix)
+            # is a 10 GiB closure that OOMs the evaluation
             modules = [
-              ./home-manager/home.nix
+              ./home-manager/core.nix
               ./home-manager/cerberus.nix
             ];
           };
