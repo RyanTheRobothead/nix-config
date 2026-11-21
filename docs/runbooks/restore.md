@@ -86,7 +86,28 @@ decrypts; the recovery kit's break-glass key covers Aegis's repository only.
 Headscale's keys and users, ntfy's users and tokens, and everything else come
 from the flake and sops. A failed backup or check posts to ntfy's `alerts` topic.
 
-To put Headscale's database back, on the host:
+From Aegis, `backupctl` on the host does all of this (each asks for the host's
+sudo password):
+
+```bash
+just backup sleeperservice              # back up now, e.g. before just provision
+just snapshots sleeperservice           # list snapshots
+just restore sleeperservice list        # what can be restored: acme gatus headscale
+just restore sleeperservice gatus 1a2b3c4d   # or headscale, acme; default latest
+```
+
+`just restore` restores to a scratch directory and checks the copy
+(`integrity_check` for a database, the account and certificate expiry for
+ACME). It then shows it beside the live data, warns if the snapshot is newer
+than the current boot (after a rebuild, `latest` is the fresh data), and asks
+before stopping anything. For a database, it keeps the live one as
+`/var/lib/backup-staging/<service>.before-restore.sqlite`, swaps the file in
+with its directory's owner, starts the service and checks it came back. For
+ACME, it leaves out `.minica`, restarts `acme-setup` and the certificate units,
+and reloads nginx.
+
+The manual steps, for when `backupctl` isn't there. To put Headscale's database
+back, on the host:
 
 ```bash
 sudo restic-backblaze restore latest --target /var/tmp/restore \
