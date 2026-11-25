@@ -60,12 +60,14 @@ D("ryandlewis.dev", REG_NONE, DnsProvider(DSP_DESEC),
   CNAME("www", "ryantherobothead.github.io."),
 
   // Services behind SWAG on Cerberus. The wildcard catches every other name.
+  // Phase 2 flips these one by one, with DNS as the rollback, so all stay at
+  // deSEC's 3600 minimum (immich and plex were 14400).
   A("*", CERBERUS),
   A("cloud", CERBERUS),
   A("foundry", CERBERUS),
-  A("immich", CERBERUS, TTL(14400)),
+  A("immich", CERBERUS),
   A("neofoundry", CERBERUS),
-  A("plex", CERBERUS, TTL(14400)),
+  A("plex", CERBERUS),
   A("request", CERBERUS),
   A("warden", CERBERUS),
 
