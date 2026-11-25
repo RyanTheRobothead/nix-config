@@ -1,6 +1,7 @@
 # SleeperService: the Linode VPS replacing Cerberus. It installs with
 # nixos-anywhere and comes up on the tailnet. It runs public ingress, ntfy,
-# Gatus and Headscale (test devices only until the Phase 2 cutover).
+# Gatus, Headscale (test devices only until the Phase 2 cutover), Smokeping
+# and LibreSpeed.
 { ... }:
 {
   imports = [
@@ -11,6 +12,8 @@
     ../../modules/infra/ntfy.nix
     ../../modules/infra/gatus.nix
     ../../modules/infra/headscale.nix
+    ../../modules/infra/smokeping.nix
+    ../../modules/infra/librespeed.nix
     ../../modules/infra/backup.nix
   ];
 

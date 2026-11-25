@@ -86,7 +86,8 @@ let
         warden = "/alive";
       };
 
-  # Cerberus's side services, until it is decommissioned in Phase 2
+  # Cerberus's side services, until it is decommissioned in Phase 2. Smokeping
+  # and LibreSpeed run on both hosts for batch 1's parallel week.
   cerberus = [
     (http "cerberus" "smokeping" "http://cerberus:8888")
     (http "cerberus" "librespeed" "http://cerberus:8889")
@@ -108,6 +109,8 @@ let
       "[STATUS] == 200"
       "[CERTIFICATE_EXPIRATION] > 336h"
     ])
+    (http "sleeperservice" "smokeping" "http://sleeperservice:8888")
+    (http "sleeperservice" "librespeed" "http://sleeperservice:8889")
   ];
 in
 {
