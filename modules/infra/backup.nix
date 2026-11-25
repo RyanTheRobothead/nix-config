@@ -24,6 +24,40 @@ let
     headscale = config.services.headscale.settings.database.sqlite.path;
     gatus = "/var/lib/private/gatus/data.db";
   };
+  backup = config.services.restic.backups.backblaze;
+
+  # just backup/snapshots/restore run this over ssh (backupctl.sh): the paths,
+  # units and certificates come from here, so nothing is typed by hand. Each
+  # database's unit has its name.
+  backupctl = pkgs.writeShellApplication {
+    name = "backupctl";
+    runtimeInputs = [
+      backup.package
+      pkgs.sqlite
+      pkgs.jq
+      pkgs.openssl
+      pkgs.procps # uptime -s
+    ];
+    text = ''
+      BACKUPCTL_HOST=${lib.escapeShellArg config.networking.hostName}
+      BACKUPCTL_UNIT=restic-backups-backblaze.service
+      BACKUPCTL_STAGING=${lib.escapeShellArg staging}
+      BACKUPCTL_REPOSITORY=${lib.escapeShellArg backup.repository}
+      BACKUPCTL_PASSWORD_FILE=${lib.escapeShellArg backup.passwordFile}
+      BACKUPCTL_ENV_FILE=${lib.escapeShellArg backup.environmentFile}
+      BACKUPCTL_CACHE_DIR=/var/cache/restic-backups-backblaze
+      declare -A DB=(${
+        lib.concatStrings (lib.mapAttrsToList (n: db: " [${n}]=${lib.escapeShellArg db}") databases)
+      } )
+      declare -A UNIT=(${
+        lib.concatStrings (lib.mapAttrsToList (n: _: " [${n}]=${n}.service") databases)
+      } )
+      CERTS=(${
+        lib.concatMapStrings (c: " ${lib.escapeShellArg c}") (lib.attrNames config.security.acme.certs)
+      } )
+    ''
+    + builtins.readFile ./backupctl.sh;
+  };
 in
 {
   sops.secrets =
@@ -37,7 +71,10 @@ in
   '';
 
   # For checking and putting back a restored database (restore.md)
-  environment.systemPackages = [ pkgs.sqlite ];
+  environment.systemPackages = [
+    pkgs.sqlite
+    backupctl
+  ];
 
   services.restic.backups.backblaze = {
     initialize = true;

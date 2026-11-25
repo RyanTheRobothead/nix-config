@@ -31,6 +31,7 @@ written NixOS's own GRUB (BIOS boot partition, `modules/profiles/linode-disko.ni
 `just provision` does all of it through the Linode API:
 
 ```bash
+just backup sleeperservice              # first, if it's up: a snapshot of right now
 just provision sleeperservice           # wipe and reinstall the existing Linode
 just provision sleeperservice --create  # the Linode is gone: make a new one
 ```
@@ -132,8 +133,11 @@ Encrypt's 5 duplicate certificates a week.
 
 Headscale comes back with its keys and its users (`headscale-users` creates
 them). Its nodes and pre-auth keys are in `/var/lib/headscale/db.sqlite`, which
-is backed up nightly: restore it as in `restore.md` (SleeperService) and the
-devices reconnect without logging in again. Without a backup, re-register each
+is backed up nightly: restore it with `just restore sleeperservice headscale
+<snapshot>` (`restore.md`, SleeperService) and the devices reconnect without
+logging in again. Gatus's history goes back the same way (`gatus`). Use the
+last snapshot from before the rebuild (`just snapshots sleeperservice`): the
+nightly backup after it holds the fresh databases. Without a backup, re-register each
 device: `sudo headscale preauthkeys create --user <id>` on the host
 (`headscale users list` shows the ID), then
 `tailscale up --login-server https://hs.ryandlewis.dev --auth-key <key>` on the

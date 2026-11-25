@@ -86,6 +86,33 @@ install host ip *args:
     nix run github:nix-community/nixos-anywhere -- \
       --flake .#{{ host }} "${extra[@]}" --target-host root@{{ ip }} {{ args }}
 
+# Backups (backupctl on the host: modules/infra/backup.nix, SleeperService
+# for now). Each asks for the host's sudo password.
+
+# Run a host's restic backup now and show the snapshot it saved, e.g. before a
+# just provision
+[doc("Back up a host to B2 now")]
+backup host:
+    ssh -t {{ host }} sudo backupctl backup
+
+# List a host's snapshots
+[doc("List a host's restic snapshots")]
+snapshots host:
+    ssh -t {{ host }} sudo backupctl snapshots
+
+# Put one service back from a snapshot (default: latest; after a rebuild, pick
+# the last one from before it). Checks the restored copy, shows it beside the
+# live data and asks before stopping anything. Services: just restore <host> list
+[doc("Restore one service (headscale, gatus, acme) from a snapshot")]
+restore host service snapshot="latest":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "{{ service }}" = list ]; then
+      ssh -t {{ host }} sudo backupctl list
+    else
+      ssh -t {{ host }} sudo backupctl restore {{ service }} {{ snapshot }}
+    fi
+
 # Home Manager Commands
 
 # Build Home Manager configuration without switching
