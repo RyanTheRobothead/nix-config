@@ -82,6 +82,7 @@ decrypts; the recovery kit's break-glass key covers Aegis's repository only.
 | Headscale nodes and pre-auth keys | `/var/lib/headscale/db.sqlite` | `/var/lib/backup-staging/headscale.sqlite`, copied with `sqlite3 .backup` before each run |
 | Gatus history | `/var/lib/private/gatus/data.db` | `/var/lib/backup-staging/gatus.sqlite`, the same way |
 | ACME account and certificates | `/var/lib/acme` | as is; `acme-restore` puts it back on a fresh install before nginx starts |
+| Smokeping history | `/var/lib/smokeping/data` | as is, backed up live |
 
 Headscale's keys and users, ntfy's users and tokens, and everything else come
 from the flake and sops. A failed backup or check posts to ntfy's `alerts` topic.
@@ -105,6 +106,18 @@ before stopping anything. For a database, it keeps the live one as
 with its directory's owner, starts the service and checks it came back. For
 ACME, it leaves out `.minica`, restarts `acme-setup` and the certificate units,
 and reloads nginx.
+
+`backupctl` doesn't restore Smokeping, whose graphs matter least. By hand, on
+the host:
+
+```bash
+sudo systemctl stop smokeping
+sudo restic-backblaze restore latest --host sleeperservice \
+  --include /var/lib/smokeping/data --target /var/tmp/smokeping-restore
+sudo cp -a /var/tmp/smokeping-restore/var/lib/smokeping/data/. /var/lib/smokeping/data/
+sudo chown -R smokeping:smokeping /var/lib/smokeping/data
+sudo systemctl start smokeping
+```
 
 The manual steps, for when `backupctl` isn't there. To put Headscale's database
 back, on the host:

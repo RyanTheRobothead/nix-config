@@ -5,8 +5,8 @@
 # work on both.
 #
 # What's here that a rebuild can't recreate: Headscale's nodes and pre-auth
-# keys, Gatus's history, and the ACME account and certificate (re-issuable,
-# but within Let's Encrypt's rate limits). Headscale's keys and ntfy's users
+# keys, Gatus's and Smokeping's history, and the ACME account and certificate
+# (re-issuable, but within Let's Encrypt's rate limits). Headscale's keys and ntfy's users
 # are in sops and Nix already. Both databases are SQLite, copied with
 # sqlite3 .backup into a staging directory, never backed up live.
 {
@@ -82,6 +82,8 @@ in
     paths = [
       staging
       "/var/lib/acme"
+      # RRDs, backed up live: a file caught mid-update loses one 5-minute step
+      "/var/lib/smokeping/data"
     ];
     backupPrepareCommand = ''
       set -eu
